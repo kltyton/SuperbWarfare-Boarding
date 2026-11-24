@@ -17,7 +17,7 @@ import net.minecraft.world.phys.Vec3;
  * Bedrock animation keyframes locked to the exact same [0..1] clock.
  */
 final class DismountRoute {
-    private static final double MAX_STEP_DOWN = 9.00;
+    private static final double MAX_STEP_DOWN = 11.00;
     private static final double STOP_SPEED = 0.045;
     private static final double[] LANDING_OFFSETS = {0, 0.30, 0.60, 0.95, 1.30};
     private static final List<Vec3> EXTERIOR_SIDES = List.of(new Vec3(-1, 0, 0), new Vec3(1, 0, 0),

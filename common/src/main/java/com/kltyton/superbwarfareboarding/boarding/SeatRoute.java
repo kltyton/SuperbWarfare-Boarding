@@ -27,6 +27,8 @@ final class SeatRoute {
     private final VehicleEntity vehicle;
     private final Player player;
     private final int seatIndex;
+    private final int entrySeatIndex;
+    private final EntryPortal forcedPortal;
     private final Vec3 entrance;
     private final AABB hull;
     private final List<Vec3> path;
@@ -43,26 +45,82 @@ final class SeatRoute {
     private MountMotion mountMotion;
     private Vec3 portalAimLocal;
 
+    /**
+     * 3-Tier GTA-style boarding route planner:
+     *   Tier 1: Direct entry for targetSeat (primary side, then opposite symmetric side if blocked).
+     *   Tier 2: GTA-style alternate side / passenger door entry -> smooth interior slide to targetSeat.
+     *   Tier 3: Returns null so BoardingScenes falls back cleanly to vanilla instant mount (never stuck!).
+     */
+    static SeatRoute plan(VehicleEntity vehicle, Player player, int targetSeat) {
+        // Tier 1a: Primary portal for targetSeat
+        SeatRoute primary = new SeatRoute(vehicle, player, targetSeat, targetSeat, null);
+        if (primary.isCompletelyClear()) return primary;
+
+        // Tier 1b: Opposite symmetric side of targetSeat (e.g. opposite fighter wing / tank side)
+        Vec3 startLocal = EntryPath.toLocal(vehicle, player.position());
+        Vec3 targetLocal = EntryPath.toLocal(vehicle, seatPositionOf(vehicle, player, targetSeat));
+        EntryPortal basePortal = EntryPortal.resolve(vehicle, targetSeat, targetLocal, startLocal);
+        if (basePortal != null) {
+            EntryPortal opposite = basePortal.oppositeSide(vehicle);
+            if (opposite != null) {
+                SeatRoute oppRoute = new SeatRoute(vehicle, player, targetSeat, targetSeat, opposite);
+                if (oppRoute.isCompletelyClear()) return oppRoute;
+            }
+        }
+
+        // Tier 2 (GTA-style): Try entering through any unobstructed alternate seat/door,
+        // then slide smoothly inside the cab/hull over into targetSeat!
+        int seatCount = vehicle.computed().seats().size();
+        SeatRoute bestAlt = null;
+        for (int altSeat = 0; altSeat < seatCount; altSeat++) {
+            if (altSeat == targetSeat) continue;
+            Vec3 altLocal = EntryPath.toLocal(vehicle, seatPositionOf(vehicle, player, altSeat));
+            EntryPortal altPortal = EntryPortal.resolve(vehicle, altSeat, altLocal, startLocal);
+            if (altPortal == null) continue;
+
+            // Try altSeat's primary door/side
+            SeatRoute cand = new SeatRoute(vehicle, player, targetSeat, altSeat, altPortal);
+            if (cand.isCompletelyClear() && (bestAlt == null || cand.distance < bestAlt.distance)) {
+                bestAlt = cand;
+            }
+            // Also try altSeat's opposite side if symmetric
+            EntryPortal altOpp = altPortal.oppositeSide(vehicle);
+            if (altOpp != null) {
+                SeatRoute candOpp = new SeatRoute(vehicle, player, targetSeat, altSeat, altOpp);
+                if (candOpp.isCompletelyClear() && (bestAlt == null || candOpp.distance < bestAlt.distance)) {
+                    bestAlt = candOpp;
+                }
+            }
+        }
+        return bestAlt; // null -> Tier 3 vanilla instant mount fallback!
+    }
+
     SeatRoute(VehicleEntity vehicle, Player player, int seatIndex) {
+        this(vehicle, player, seatIndex, seatIndex, null);
+    }
+
+    private SeatRoute(VehicleEntity vehicle, Player player, int seatIndex, int entrySeatIndex, EntryPortal forcedPortal) {
         this.vehicle = vehicle;
         this.player = player;
         this.seatIndex = seatIndex;
+        this.entrySeatIndex = entrySeatIndex;
+        this.forcedPortal = forcedPortal;
         startedAt = vehicle.level().getGameTime();
         yaw = player.getYRot();
         walkStartYaw = yaw;
-        SeatInfo seat = seat();
-        Vec3 position = seatPosition(seat);
-        door = CabDoor.forSeat(vehicle, seatIndex);
-        profile = door == null ? BoardingProfile.of(vehicle, seatIndex, position.y - player.getY()) : BoardingProfile.CAB;
+        SeatInfo entrySeat = seat(entrySeatIndex);
+        Vec3 position = seatPosition(entrySeat);
+        door = CabDoor.forSeat(vehicle, entrySeatIndex);
+        profile = door == null ? BoardingProfile.of(vehicle, entrySeatIndex, position.y - player.getY()) : BoardingProfile.CAB;
         Vec3 start = EntryPath.toLocal(vehicle, player.position());
         Vec3 endpoint = EntryPath.toLocal(vehicle, position);
-        var dismount = seat.getDismountInfo();
+        var dismount = entrySeat.getDismountInfo();
         Vec3 dismountHint = dismount == null || dismount.getPosition() == null ? null
                 : EntryPath.toLocal(vehicle, transform(dismount.getTransform(), dismount.getPosition()));
         double clearance = player.getBbWidth() / 2.0 + (profile == BoardingProfile.CHAIR ? 0.16 : 0.26);
         hull = EntryPath.footprint(vehicle);
         var bounds = hull.inflate(clearance, 0, clearance);
-        var portal = EntryPortal.resolve(vehicle, seatIndex, endpoint, start);
+        var portal = forcedPortal != null ? forcedPortal : EntryPortal.resolve(vehicle, entrySeatIndex, endpoint, start);
         Vec3 target = portal == null ? endpoint : portal.lip();
         Vec3 hint = portal != null && portal.approachHint() != null ? portal.approachHint() : dismountHint;
         Vec3 edge = portal == null ? EntryPath.entrance(bounds, target, hint, start)
@@ -89,6 +147,10 @@ final class SeatRoute {
             strideTicks = WALK_STRIDE_TICKS;
         }
         mountMotion = planMount(strides == 0 ? start : entrance);
+    }
+
+    private boolean isCompletelyClear() {
+        return hasRoute() && mountMotion.exteriorClear(vehicle, player);
     }
 
     BoardingProfile profile() {
@@ -237,11 +299,16 @@ final class SeatRoute {
 
     private MountMotion planMount(Vec3 start) {
         double approachHeight = EntryPath.toWorld(vehicle, start).y;
-        Vec3 end = EntryPath.standingPoint(player, seatPosition(seat()), approachHeight);
-        Vec3 localSeat = EntryPath.toLocal(vehicle, end);
-        var portal = EntryPortal.resolve(vehicle, seatIndex, localSeat, start);
-        portalAimLocal = portal != null ? portal.aim() : localSeat;
-        return MountMotion.plan(profile, door, hull, start, localSeat, portal);
+        Vec3 entryEnd = EntryPath.standingPoint(player, seatPosition(seat(entrySeatIndex)), approachHeight);
+        Vec3 localEntrySeat = EntryPath.toLocal(vehicle, entryEnd);
+        var portal = forcedPortal != null ? forcedPortal : EntryPortal.resolve(vehicle, entrySeatIndex, localEntrySeat, start);
+        portalAimLocal = portal != null ? portal.aim() : localEntrySeat;
+        MountMotion base = MountMotion.plan(profile, door, hull, start, localEntrySeat, portal);
+        if (base == null || entrySeatIndex == seatIndex) return base;
+        // GTA-style interior slide: after climbing through entrySeatIndex's open door, slide over into seatIndex!
+        Vec3 targetEnd = EntryPath.standingPoint(player, seatPosition(seat(seatIndex)), approachHeight);
+        Vec3 localTargetSeat = EntryPath.toLocal(vehicle, targetEnd);
+        return base.withInteriorSlide(localTargetSeat);
     }
 
     private Vec3 supportAtEntrance(Vec3 point, Vec3 target) {
@@ -297,11 +364,12 @@ final class SeatRoute {
     }
 
     private float entranceYaw() {
-        SeatInfo seat = seat();
-        float seatYaw = vehicle.getYRot() + seat.getOrientation();
+        SeatInfo entrySeat = seat(entrySeatIndex);
+        float seatYaw = vehicle.getYRot() + entrySeat.getOrientation();
         if (profile == BoardingProfile.CHAIR) return seatYaw;
-        Vec3 target = seatPosition(seat);
-        var portal = EntryPortal.resolve(vehicle, seatIndex, EntryPath.toLocal(vehicle, target), entrance);
+        Vec3 target = seatPosition(entrySeat);
+        var portal = forcedPortal != null ? forcedPortal
+                : EntryPortal.resolve(vehicle, entrySeatIndex, EntryPath.toLocal(vehicle, target), entrance);
         if (portal != null) {
             target = EntryPath.toWorld(vehicle, portal.aim());
         }
@@ -314,7 +382,18 @@ final class SeatRoute {
     }
 
     private SeatInfo seat() {
-        return vehicle.computed().seats().get(seatIndex);
+        return seat(seatIndex);
+    }
+
+    private SeatInfo seat(int index) {
+        return vehicle.computed().seats().get(index);
+    }
+
+    private static Vec3 seatPositionOf(VehicleEntity vehicle, Player player, int index) {
+        SeatInfo info = vehicle.computed().seats().get(index);
+        var point = vehicle.transformPosition(vehicle.getTransformFromString(info.transform),
+                info.getPosition().x, info.getPosition().y, info.getPosition().z);
+        return new Vec3(point.x, point.y, point.z).add(0, VehicleConfig.getPassengerYOffset(player.getType()), 0);
     }
 
     private Vec3 seatPosition(SeatInfo seat) {

@@ -32,6 +32,43 @@ final class MountMotion {
         this.contacts = contacts;
     }
 
+    /**
+     * Appends a smooth interior slide (GTA-style: climb in through an unobstructed passenger/side door,
+     * then shift across inside the cab/hull into the target driver seat!).
+     */
+    MountMotion withInteriorSlide(Vec3 targetSeat) {
+        if (contacts.isEmpty()) return this;
+        Vec3 last = contacts.get(contacts.size() - 1).position;
+        if (last.distanceToSqr(targetSeat) < 0.04) return this;
+        var shifted = new java.util.ArrayList<Contact>(contacts.size() + 2);
+        // Compress exterior entry cleanly into [0.00..0.84], then slide smoothly across inside [0.84..0.96] -> hold [1.00]
+        for (Contact c : contacts) {
+            double t = c.time * 0.84;
+            shifted.add(new Contact(t, c.position, c.mode));
+        }
+        shifted.add(new Contact(0.96, targetSeat, MotionMode.SMOOTH));
+        shifted.add(new Contact(1.00, targetSeat, MotionMode.SMOOTH));
+        return new MountMotion(shifted);
+    }
+
+    /**
+     * Checks whether the exterior portion of this boarding trajectory is free of solid world blocks.
+     * Used upfront by SeatRoute.plan so blocked doors immediately route to an unobstructed GTA side door!
+     */
+    boolean exteriorClear(com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity vehicle,
+                          net.minecraft.world.entity.player.Player player) {
+        Vec3 prev = EntryPath.toWorld(vehicle, sample(0.0));
+        // Only check exterior approach/door-swing/climb steps (0..0.66) against world blocks;
+        // interior cabin/seat space (>0.66) is inside the vehicle hull itself.
+        for (int i = 1; i <= 10; i++) {
+            double t = i * 0.066;
+            Vec3 next = EntryPath.toWorld(vehicle, sample(t));
+            if (!EntryPath.clear(vehicle, player, prev, next)) return false;
+            prev = next;
+        }
+        return true;
+    }
+
     /** Plans the boarding trajectory from vehicle-local ground/platform start into the seat/interior. */
     static MountMotion plan(BoardingProfile profile, CabDoor door, AABB hull, Vec3 start, Vec3 seat, EntryPortal portal) {
         Vec3 opening = portal == null ? seat : portal.lip();
@@ -341,21 +378,42 @@ final class MountMotion {
                     new Contact(1.00, destination, MotionMode.SMOOTH)));
         }
 
-        // Tall ladder / artillery / airship climb
+        // Tall ladder / artillery / airship climb (Kirov, AC-130, Annihilator, BL-132, MK-42, MLE-1934)
         if (profile.climbs()) {
-            if (rise > 8.40 || lipRise > 8.40) return null;
+            if (rise > 11.00 || lipRise > 11.00) return null;
             double deckHeight = Math.max(start.y, opening.y);
+            double climbX = portal != null && portal.exteriorStep() != null ? portal.exteriorStep().x : edge.x;
+            double climbZ = portal != null && portal.exteriorStep() != null ? portal.exteriorStep().z : edge.z;
+            Vec3 ladderBase = new Vec3(climbX, start.y, climbZ);
+            Vec3 upper = portal != null && portal.foothold() != null
+                    ? new Vec3(portal.foothold().x, Math.max(start.y, portal.foothold().y), portal.foothold().z)
+                    : new Vec3(climbX, deckHeight, climbZ);
+            Vec3 atOpening = new Vec3(opening.x, Math.max(upper.y, opening.y), opening.z);
+            // Multi-rung continuous vertical climb for tall airships/aircraft/artillery (e.g. Kirov 8.4m gondola ladder!)
+            if (deckHeight - start.y > 2.00) {
+                double topClimbY = Math.max(start.y, upper.y);
+                Vec3 rung1 = new Vec3(climbX, Mth.lerp(0.22, start.y, topClimbY), climbZ);
+                Vec3 rung2 = new Vec3(climbX, Mth.lerp(0.46, start.y, topClimbY), climbZ);
+                Vec3 rung3 = new Vec3(climbX, Mth.lerp(0.70, start.y, topClimbY), climbZ);
+                Vec3 rung4 = new Vec3(climbX, Mth.lerp(0.92, start.y, topClimbY), climbZ);
+                return new MountMotion(List.of(
+                        new Contact(0.00, start, MotionMode.SMOOTH),
+                        new Contact(0.08, ladderBase, MotionMode.WALK),
+                        new Contact(0.21, rung1, MotionMode.WALK),
+                        new Contact(0.35, rung2, MotionMode.WALK),
+                        new Contact(0.49, rung3, MotionMode.WALK),
+                        new Contact(0.62, rung4, MotionMode.WALK),
+                        new Contact(0.72, upper, MotionMode.CLIMB_UP),
+                        new Contact(0.82, atOpening, MotionMode.WALK),
+                        new Contact(0.94, destination, MotionMode.SMOOTH),
+                        new Contact(1.00, destination, MotionMode.SMOOTH)));
+            }
             Vec3 step = portal != null && portal.exteriorStep() != null
                     ? new Vec3(portal.exteriorStep().x, Math.max(start.y, Math.min(portal.exteriorStep().y, start.y + (deckHeight - start.y) * 0.45)), portal.exteriorStep().z)
                     : new Vec3(edge.x, Math.min(deckHeight, start.y + (deckHeight - start.y) * 0.45), edge.z);
-            Vec3 upper = portal != null && portal.foothold() != null
-                    ? new Vec3(portal.foothold().x, Math.max(step.y, portal.foothold().y), portal.foothold().z)
-                    : new Vec3(edge.x, deckHeight, edge.z);
-            Vec3 reach = new Vec3(step.x, start.y, step.z);
-            Vec3 atOpening = new Vec3(opening.x, Math.max(upper.y, opening.y), opening.z);
             return new MountMotion(List.of(
                     new Contact(0.00, start, MotionMode.SMOOTH),
-                    new Contact(0.12, reach, MotionMode.WALK),
+                    new Contact(0.12, ladderBase, MotionMode.WALK),
                     new Contact(0.32, step, MotionMode.CLIMB_UP),
                     new Contact(0.52, upper, MotionMode.CLIMB_UP),
                     new Contact(0.68, atOpening, MotionMode.WALK),

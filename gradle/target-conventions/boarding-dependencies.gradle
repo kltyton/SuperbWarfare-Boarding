@@ -1,5 +1,6 @@
 repositories {
     maven { url = uri('https://api.modrinth.com/maven') }
+    maven { url = uri('https://repo.redlance.org/public') }
     maven {
         url = uri('https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/')
         content { includeGroup('software.bernie.geckolib') }
@@ -77,6 +78,10 @@ dependencies {
         compileOnly files(moreRotation)
         compileOnly 'net.fabricmc:sponge-mixin:0.17.5+mixin.0.8.7'
         annotationProcessor 'net.fabricmc:sponge-mixin:0.17.5+mixin.0.8.7'
+    } else {
+        compileOnly("com.zigythebird.playeranim:PlayerAnimationLibNeo:1.1.6+mc.1.21.1") { transitive = false }
+        compileOnly("com.zigythebird.playeranim:PlayerAnimationLibCore:1.1.6+mc.1.21.1") { transitive = false }
+        compileOnly("maven.modrinth:playeranimationlibrarymorerotation:1.2.1+mc1.21.1-neoforge") { transitive = false }
     }
 }
 

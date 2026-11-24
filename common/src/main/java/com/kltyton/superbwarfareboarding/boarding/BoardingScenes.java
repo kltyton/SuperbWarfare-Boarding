@@ -67,8 +67,8 @@ public final class BoardingScenes {
             return nativeMount.getAsBoolean();
         }
 
-        var route = new SeatRoute(vehicle, rider, seat);
-        if (!route.hasRoute()) return nativeMount.getAsBoolean();
+        var route = SeatRoute.plan(vehicle, rider, seat);
+        if (route == null) return nativeMount.getAsBoolean();
         var run = new Run(rider, vehicle, route, nativeMount);
         if (!playing(run.scene)) return run.mount();
         active.put(vehicle.getUUID(), run);
@@ -87,7 +87,15 @@ public final class BoardingScenes {
         DismountScenes.tick(server);
         var scenes = ACTIVE.get(server);
         if (scenes == null) return;
-        scenes.values().removeIf(run -> !playing(run.scene));
+        scenes.values().removeIf(run -> {
+            if (playing(run.scene)) return false;
+            // If an animated boarding run was aborted due to an unexpected obstacle mid-way,
+            // fall back cleanly to vanilla instant mount instead of stranding the player outside!
+            if (!run.attemptedMount && run.blockedFallback && run.route.available()) {
+                run.mount();
+            }
+            return true;
+        });
         if (scenes.isEmpty()) ACTIVE.remove(server);
     }
 
@@ -111,6 +119,7 @@ public final class BoardingScenes {
         SceneHandle scene;
         boolean attemptedMount;
         boolean mounted;
+        boolean blockedFallback;
 
         Run(ServerPlayer rider, VehicleEntity vehicle, SeatRoute route, BooleanSupplier nativeMount) {
             this.rider = rider;
@@ -122,7 +131,7 @@ public final class BoardingScenes {
             if (route.strides() == 0) {
                 startMount();
             } else {
-                var subject = new SceneSubject(vehicle.level(), route::walkFrame, route::walkUnblocked,
+                var subject = new SceneSubject(vehicle.level(), route::walkFrame, this::checkWalkUnblocked,
                         vehicle, 0, false, () -> {}, () -> {});
                 var options = PlaybackOptions.DEFAULT.camera(PlaybackOptions.CameraMode.VANILLA).markers(marker -> {
                     if (marker.instruction().equals("enter")) {
@@ -137,13 +146,27 @@ public final class BoardingScenes {
             }
         }
 
+        private boolean checkWalkUnblocked() {
+            if (!route.available()) return false;
+            if (route.walkUnblocked()) return true;
+            blockedFallback = true;
+            return false;
+        }
+
+        private boolean checkMountUnblocked() {
+            if (!route.available()) return false;
+            if (route.mountUnblocked()) return true;
+            blockedFallback = true;
+            return false;
+        }
+
         void startMount() {
             route.beginMount();
             if (!route.mountUnblocked()) {
                 mount();
                 return;
             }
-            var subject = new SceneSubject(vehicle.level(), route::mountFrame, route::mountUnblocked,
+            var subject = new SceneSubject(vehicle.level(), route::mountFrame, this::checkMountUnblocked,
                     vehicle, 0, false, () -> {}, () -> {});
             var options = PlaybackOptions.DEFAULT.camera(PlaybackOptions.CameraMode.VANILLA).markers(marker -> {
                 if (marker.instruction().equals("mount")) {

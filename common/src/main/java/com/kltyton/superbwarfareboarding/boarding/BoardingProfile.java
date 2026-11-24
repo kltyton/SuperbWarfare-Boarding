@@ -5,7 +5,7 @@ import com.atsuishio.superbwarfare.data.vehicle.subdata.VehicleType;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 
 enum BoardingProfile {
-    STEP(24), CAB(30), CHAIR(24), DECK(28), HATCH(56), COCKPIT(72), MI28_DOOR(64), LADDER(56), RAMP(56),
+    STEP(24), CAB(30), CHAIR(24), DECK(28), HATCH(56), COCKPIT(72), MI28_DOOR(64), LADDER(72), RAMP(56),
     BRADLEY_DOOR(64), T90_HATCH(76), JU87_COCKPIT(68), GHAST_CLIMB(76);
 
     private final int ticks;
