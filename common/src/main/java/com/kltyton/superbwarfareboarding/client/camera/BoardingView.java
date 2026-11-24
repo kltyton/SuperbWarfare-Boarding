@@ -26,6 +26,7 @@ import net.minecraft.world.phys.Vec3;
 public final class BoardingView {
     private static final int PULL_BACK_TICKS = 15;
     private static final int RETURN_TICKS = 15;
+    private static final int HOLD_SKIP_TICKS = 10;
     private static final double SELF_CLEARANCE = 1.05;
     private static final Map<UUID, Integer> ACTIVE_SEATS = new HashMap<>();
     private static Runnable dismountSkip = () -> {};
@@ -79,6 +80,18 @@ public final class BoardingView {
         return session != null && session.vehicle == vehicle;
     }
 
+    /** True while a boarding or dismounting animation is actively playing (before camera return). */
+    public static boolean isPlaying() {
+        return session != null && session.returning < 0 && !session.skipSent;
+    }
+
+    /** Returns smooth [0..1] hold-to-skip progress for HUD rendering. */
+    public static float skipHoldProgress(float partialTick) {
+        if (session == null || session.returning >= 0 || session.skipSent) return 0.0f;
+        float lerped = Mth.lerp(Mth.clamp(partialTick, 0.0f, 1.0f), session.prevHoldTicks, session.holdTicks);
+        return Mth.clamp(lerped / HOLD_SKIP_TICKS, 0.0f, 1.0f);
+    }
+
     public static void tick(Minecraft game) {
         var player = game.player;
         if (player == null || game.level == null || game.getCameraEntity() != player || !player.isAlive()) {
@@ -124,23 +137,40 @@ public final class BoardingView {
     }
 
     private static void pollSkipInput(Minecraft game, LocalPlayer player, Session active, long now) {
-        if (game.screen != null || active.skipSent) return;
-        if (!active.exiting) {
-            boolean useClicked = game.options.keyUse.consumeClick();
-            boolean useDown = game.options.keyUse.isDown();
-            if (!useDown && !useClicked) {
-                active.sawKeyRelease = true;
-            } else if ((active.sawKeyRelease || useClicked) && now - active.start >= 3 && game.gameMode != null) {
-                active.skipSent = true;
-                game.gameMode.interact(player, active.vehicle, InteractionHand.MAIN_HAND);
-            }
-        } else {
-            boolean exitClicked = ModKeyMappings.DISMOUNT.consumeClick() || game.options.keyShift.consumeClick();
-            boolean exitDown = ModKeyMappings.DISMOUNT.isDown() || game.options.keyShift.isDown();
-            if (!exitDown && !exitClicked) {
-                active.sawKeyRelease = true;
-            } else if ((active.sawKeyRelease || exitClicked) && now - active.start >= 3) {
-                active.skipSent = true;
+        if (active.returning >= 0 || active.skipSent) return;
+        if (game.screen != null) {
+            active.prevHoldTicks = 0;
+            active.holdTicks = 0;
+            return;
+        }
+        // Consume raw clicks so single accidental taps never trigger vanilla item-use or instant skip
+        while (game.options.keyUse.consumeClick()) {}
+        while (ModKeyMappings.DISMOUNT.consumeClick()) {}
+
+        boolean holding = game.options.keyUse.isDown()
+                || ModKeyMappings.DISMOUNT.isDown()
+                || game.options.keyShift.isDown();
+        if (!holding) {
+            active.sawKeyRelease = true;
+            active.prevHoldTicks = active.holdTicks;
+            active.holdTicks = 0;
+            return;
+        }
+        // Ignore the initial click held briefly when triggering boarding/dismounting
+        if (!active.sawKeyRelease && now - active.start < 6) {
+            active.prevHoldTicks = 0;
+            active.holdTicks = 0;
+            return;
+        }
+        active.prevHoldTicks = active.holdTicks;
+        active.holdTicks = Math.min(HOLD_SKIP_TICKS, active.holdTicks + 1);
+        if (active.holdTicks >= HOLD_SKIP_TICKS) {
+            active.skipSent = true;
+            if (!active.exiting) {
+                if (game.gameMode != null) {
+                    game.gameMode.interact(player, active.vehicle, InteractionHand.MAIN_HAND);
+                }
+            } else {
                 dismountSkip.run();
             }
         }
@@ -337,6 +367,8 @@ public final class BoardingView {
         float exitYaw;
         float exitPitch;
         boolean sawKeyRelease;
+        int prevHoldTicks;
+        int holdTicks;
         boolean skipSent;
 
         Session(LocalPlayer player, VehicleEntity vehicle, CameraType previous, long tick, Pose origin, boolean exiting) {

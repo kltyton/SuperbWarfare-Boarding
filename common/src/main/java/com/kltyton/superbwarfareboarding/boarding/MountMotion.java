@@ -306,20 +306,18 @@ final class MountMotion {
                         new Contact(1.00, dropInside, MotionMode.SMOOTH)));
             }
 
-            Vec3 mid = onFender.lerp(besideHatch, 0.50);
-            double midY = SurfaceClearance.supportTopY(allSolids, mid.x, mid.z, mid.y, SurfaceClearance.FOOT_RADIUS, 0.55);
-            Vec3 midDeck = new Vec3(mid.x, midY, mid.z);
+            // Single-tier front-hull hatch (PLZ-05 seat 0, Prism Tank): climb hull -> ONE crisp step beside hatch ->
+            // stand still & open hatch -> step over & drop in (zero in-place walking!)
             Vec3 overHatch = new Vec3(opening.x, lipY, opening.z);
             Vec3 dropInside = new Vec3(destination.x, destination.y, destination.z);
             return new MountMotion(List.of(
                     new Contact(0.00, start, MotionMode.SMOOTH),
                     new Contact(0.08, atTrack, MotionMode.WALK),
-                    new Contact(0.26, onFender, MotionMode.CLIMB_UP),
-                    new Contact(0.42, midDeck, MotionMode.WALK),
-                    new Contact(0.56, besideHatch, MotionMode.WALK),
-                    new Contact(0.67, besideHatch, MotionMode.SMOOTH),
+                    new Contact(0.34, onFender, MotionMode.CLIMB_UP),
+                    new Contact(0.48, besideHatch, MotionMode.WALK),
+                    new Contact(0.64, besideHatch, MotionMode.SMOOTH),
                     new Contact(0.76, overHatch, MotionMode.WALK),
-                    new Contact(0.88, dropInside, MotionMode.DROP_IN),
+                    new Contact(0.90, dropInside, MotionMode.DROP_IN),
                     new Contact(1.00, dropInside, MotionMode.SMOOTH)));
         }
 

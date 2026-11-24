@@ -54,7 +54,7 @@ public final class BoardingScenes {
         Run existing = active.get(vehicle.getUUID());
         if (existing != null) {
             if (existing.rider == rider && playing(existing.scene)) {
-                if (vehicle.level().getGameTime() - existing.startedTick >= 3) {
+                if (vehicle.level().getGameTime() - existing.startedTick >= 8) {
                     active.remove(vehicle.getUUID());
                     return existing.skip();
                 }

@@ -5,7 +5,7 @@ import com.atsuishio.superbwarfare.data.vehicle.subdata.VehicleType;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 
 enum BoardingProfile {
-    STEP(24), CAB(30), CHAIR(24), DECK(28), HATCH(56), COCKPIT(72), MI28_DOOR(64), LADDER(72), RAMP(56),
+    STEP(24), CAB(30), CHAIR(24), DECK(28), HATCH(48), COCKPIT(72), MI28_DOOR(64), LADDER(72), RAMP(56),
     BRADLEY_DOOR(64), T90_HATCH(76), JU87_COCKPIT(68), GHAST_CLIMB(76);
 
     private final int ticks;
@@ -30,7 +30,9 @@ enum BoardingProfile {
             case "bradley" -> BRADLEY_DOOR;
             case "lav_25", "lav_ad" -> RAMP;
             case "ju_87" -> JU87_COCKPIT;
-            case "t_90a", "prism_tank", "bmp_2", "lav_150", "m_1a_2", "ztz_99a", "plz_05" ->
+            case "prism_tank" -> HATCH;
+            case "plz_05" -> seat == 0 ? HATCH : T90_HATCH;
+            case "t_90a", "bmp_2", "lav_150", "m_1a_2", "ztz_99a" ->
                     seatRise > 0.70 ? T90_HATCH : HATCH;
             case "yx_100" -> seatRise > 1.30 ? T90_HATCH : HATCH;
             case "a_10a", "j_16" -> COCKPIT;

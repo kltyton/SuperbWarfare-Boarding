@@ -37,7 +37,7 @@ public final class DismountScenes {
         if (active != null) {
             Run existing = active.get(player.getUUID());
             if (existing != null && BoardingScenes.playing(existing.scene)) {
-                if (player.level().getGameTime() - existing.startedTick >= 3) {
+                if (player.level().getGameTime() - existing.startedTick >= 8) {
                     active.remove(player.getUUID());
                     existing.skip();
                 }
