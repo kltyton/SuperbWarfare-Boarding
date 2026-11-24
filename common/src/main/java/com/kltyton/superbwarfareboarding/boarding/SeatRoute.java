@@ -184,15 +184,24 @@ final class SeatRoute {
             float finalYaw = Mth.rotLerp((float) smooth((time - 0.74) / 0.16), openYaw, seatYaw);
             return oriented(pos, finalYaw);
         }
+        if (profile == BoardingProfile.MI28_DOOR) {
+            // Face the helicopter while stepping onto wheel & sponson and pulling side door open (0..0.60),
+            // then turn smoothly into the pilot/gunner seat heading while straddling over the armor sill (0.60..0.86).
+            float towardDoor = portalAimLocal != null
+                    ? heading(pos, EntryPath.toWorld(vehicle, portalAimLocal), entryFacing) : entryFacing;
+            float doorYaw = Mth.rotLerp((float) smooth(time / 0.18), startYaw, towardDoor);
+            float finalYaw = Mth.rotLerp((float) smooth((time - 0.60) / 0.24), doorYaw, seatYaw);
+            return oriented(pos, finalYaw);
+        }
         if (profile == BoardingProfile.T90_HATCH || profile == BoardingProfile.HATCH || profile == BoardingProfile.COCKPIT) {
-            // Face hull during L-shaped climb (0..0.24), face travel direction along deck/wing walk (0.24..0.52),
-            // turn directly toward the canopy/hatch while opening it (0.52..0.72), then align into seat heading (0.72..0.88).
+            // Face hull during vault (0..0.24), flow along travel tangent on deck/wing walk (0.24..0.52),
+            // turn smoothly toward canopy/hatch to open it (0.52..0.72), then align into seat heading (0.72..0.88).
             float tangent = travelYaw(time, entryFacing);
             float towardPortal = portalAimLocal != null
                     ? heading(pos, EntryPath.toWorld(vehicle, portalAimLocal), entryFacing) : entryFacing;
-            float walkYaw = Mth.rotLerp((float) smooth((time - 0.24) / 0.08), entryFacing, tangent);
-            float openYaw = Mth.rotLerp((float) smooth((time - 0.48) / 0.10), walkYaw, towardPortal);
-            float finalYaw = Mth.rotLerp((float) smooth((time - 0.74) / 0.16), openYaw, seatYaw);
+            float walkYaw = Mth.rotLerp((float) smooth((time - 0.24) / 0.10), entryFacing, tangent);
+            float openYaw = Mth.rotLerp((float) smooth((time - 0.48) / 0.12), walkYaw, towardPortal);
+            float finalYaw = Mth.rotLerp((float) smooth((time - 0.72) / 0.16), openYaw, seatYaw);
             return oriented(pos, finalYaw);
         }
         if (profile == BoardingProfile.GHAST_CLIMB) {
@@ -207,8 +216,8 @@ final class SeatRoute {
     }
 
     private float travelYaw(double time, float fallback) {
-        Vec3 a = mountPosition(Math.max(0.0, time - 0.03));
-        Vec3 b = mountPosition(Math.min(1.0, time + 0.03));
+        Vec3 a = mountPosition(Math.max(0.0, time - 0.05));
+        Vec3 b = mountPosition(Math.min(1.0, time + 0.05));
         return a.subtract(b).horizontalDistanceSqr() > 0.002 ? heading(a, b, fallback) : fallback;
     }
 

@@ -58,7 +58,7 @@ final class DismountRoute {
         this.startYaw = player.getYRot();
         this.interiorStart = interiorStart;
         this.ladderDescent = ladderDescent;
-        this.mi28SideDoor = profile == BoardingProfile.COCKPIT && "mi_28".equals(VehicleRigCatalog.id(vehicle));
+        this.mi28SideDoor = profile == BoardingProfile.MI28_DOOR;
         Vec3 outward = (profile == BoardingProfile.BRADLEY_DOOR || profile == BoardingProfile.RAMP)
                 ? Vec3.directionFromRotation(0, vehicle.getYRot() + 180)
                 : landing.subtract(EntryPath.toWorld(vehicle, portalLip));
@@ -160,7 +160,7 @@ final class DismountRoute {
 
     private static double releaseFraction(BoardingProfile profile) {
         return switch (profile) {
-            case CAB, HATCH, BRADLEY_DOOR, T90_HATCH, RAMP, COCKPIT, JU87_COCKPIT -> 0.16;
+            case CAB, HATCH, BRADLEY_DOOR, T90_HATCH, RAMP, COCKPIT, MI28_DOOR, JU87_COCKPIT -> 0.16;
             default -> 0.10;
         };
     }

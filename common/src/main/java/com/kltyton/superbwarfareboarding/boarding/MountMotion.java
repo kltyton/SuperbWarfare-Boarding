@@ -222,8 +222,9 @@ final class MountMotion {
                     new Contact(1.00, dropInside, MotionMode.SMOOTH)));
         }
 
-        // Fighter / gunship cockpit climb (A-10A wing root, J-16 LERX, Mi-28 exact wheel gear2#4 -> sponson -> sill)
-        if (profile == BoardingProfile.COCKPIT && portal != null && portal.exteriorStep() != null && portal.foothold() != null) {
+        // Fighter / gunship cockpit climb (A-10A wing root, J-16 LERX, Mi-28 dedicated wheel -> sponson -> side door)
+        if ((profile == BoardingProfile.COCKPIT || profile == BoardingProfile.MI28_DOOR)
+                && portal != null && portal.exteriorStep() != null && portal.foothold() != null) {
             Vec3 step = portal.exteriorStep();
             Vec3 sillHold = portal.foothold();
             if (opening.y - start.y > 3.40 || start.y > opening.y + 0.65) return null;
@@ -233,8 +234,8 @@ final class MountMotion {
             Vec3 upperStep = new Vec3(sillHold.x, Math.max(midStep.y, sillHold.y), sillHold.z);
             Vec3 overRim = new Vec3(opening.x, Math.max(upperStep.y, opening.y), opening.z);
 
-            if (opening.z - sillHold.z > 1.0) {
-                // Wing / LERX walk fighter (A-10A / J-16): stand CLEAR outside edge -> L-shaped hoist -> brisk walk -> open canopy!
+            if (profile == BoardingProfile.COCKPIT && opening.z - sillHold.z > 1.0) {
+                // Wing / LERX walk fighter (A-10A / J-16): stand CLEAR outside edge -> curved vault -> fluid walk -> straddle in!
                 Vec3 atEdge = portal.approachHint() != null
                         ? new Vec3(portal.approachHint().x, start.y, portal.approachHint().z)
                         : new Vec3(step.x + sideSign * 0.56, start.y, step.z);
@@ -264,18 +265,18 @@ final class MountMotion {
                         new Contact(1.00, destination, MotionMode.SMOOTH)));
             }
 
-            // Mi-28 side cockpit door: exact wheel tire gear2#4 -> sponson -> pull door open (0.54..0.68) -> step over sill -> sit!
+            // Mi-28 dedicated side door: step onto wheel (0..0.20) -> sponson (0.20..0.38) ->
+            // pull armored side door open (0.38..0.56) -> high-leg straddle & duck over "024" sill (0.56..0.86) -> close door!
             Vec3 atWheel = new Vec3(step.x + sideSign * 0.42, start.y, step.z);
             Vec3 sillClimb = new Vec3(opening.x, Math.max(upperStep.y, opening.y), opening.z);
             return new MountMotion(List.of(
                     new Contact(0.00, start, MotionMode.SMOOTH),
-                    new Contact(0.08, atWheel, MotionMode.WALK),
-                    new Contact(0.24, midStep, MotionMode.WALK),
-                    new Contact(0.44, upperStep, MotionMode.WALK),
-                    new Contact(0.54, upperStep, MotionMode.SMOOTH),
-                    new Contact(0.68, upperStep, MotionMode.SMOOTH),
-                    new Contact(0.78, sillClimb, MotionMode.WALK),
-                    new Contact(0.88, destination, MotionMode.SMOOTH),
+                    new Contact(0.06, atWheel, MotionMode.WALK),
+                    new Contact(0.20, midStep, MotionMode.WALK),
+                    new Contact(0.38, upperStep, MotionMode.WALK),
+                    new Contact(0.56, upperStep, MotionMode.SMOOTH),
+                    new Contact(0.72, sillClimb, MotionMode.CLIMB_UP),
+                    new Contact(0.86, destination, MotionMode.DROP_IN),
                     new Contact(1.00, destination, MotionMode.SMOOTH)));
         }
 
@@ -451,14 +452,14 @@ final class MountMotion {
         }
 
         // 2. Fighter / gunship / dive-bomber cockpits (release=0.16)
-        if ((profile == BoardingProfile.COCKPIT || profile == BoardingProfile.JU87_COCKPIT)
+        if ((profile == BoardingProfile.COCKPIT || profile == BoardingProfile.MI28_DOOR || profile == BoardingProfile.JU87_COCKPIT)
                 && portal != null && portal.exteriorStep() != null && portal.foothold() != null) {
             if (opening.y - landing.y > 3.40 || landing.y > opening.y + 0.65) return null;
             Vec3 step = portal.exteriorStep();
             Vec3 sillHold = portal.foothold();
             Vec3 rim = new Vec3(opening.x, Math.max(sillHold.y, opening.y), opening.z);
 
-            if (profile == BoardingProfile.JU87_COCKPIT || opening.z - sillHold.z > 1.0) {
+            if (profile != BoardingProfile.MI28_DOOR && (profile == BoardingProfile.JU87_COCKPIT || opening.z - sillHold.z > 1.0)) {
                 // Wing / LERX fighters (A-10A, J-16, Ju-87): open canopy -> climb out -> face canopy & close -> walk wing -> drop off!
                 boolean wideLerx = profile != BoardingProfile.JU87_COCKPIT && Math.abs(sillHold.x) >= 1.05;
                 double shoulderX = profile == BoardingProfile.JU87_COCKPIT
@@ -698,28 +699,41 @@ final class MountMotion {
                 yield a.lerp(b, Mth.clamp(s, 0, 1));
             }
             case CLIMB_UP -> {
-                // Pure L-shaped exterior hoist: rise vertically clear outside the wing/LERX/ERA edge FIRST,
-                // then step horizontally onto the top deck once boots clear the surface!
+                // Athletic curved parabolic vault arc: rises cleanly clear outside wing/LERX/ERA edge FIRST
+                // with a subtle 7cm natural vault crest, then curves smoothly forward onto the top deck!
                 if (b.y > a.y + 0.35) {
-                    double uy = smooth(Math.min(1.0, u / 0.62));
-                    double uxz = smooth(Math.max(0.0, (u - 0.52) / 0.48));
-                    yield new Vec3(Mth.lerp(uxz, a.x, b.x), Mth.lerp(uy, a.y, b.y), Mth.lerp(uxz, a.z, b.z));
+                    double tRise = Mth.clamp(u / 0.66, 0.0, 1.0);
+                    double uy = 1.0 - Math.pow(1.0 - tRise, 2.2);
+                    double crest = 0.07 * Math.sin(Math.PI * Mth.clamp((u - 0.38) / 0.62, 0.0, 1.0));
+                    double uxz = smooth(Math.max(0.0, (u - 0.42) / 0.58));
+                    yield new Vec3(
+                            Mth.lerp(uxz, a.x, b.x),
+                            Mth.lerp(uy, a.y, b.y) + crest,
+                            Mth.lerp(uxz, a.z, b.z));
                 }
                 yield a.lerp(b, smooth(u));
             }
             case DROP_IN -> {
-                // Center over hatch/seat horizontally first, then drop straight inside!
-                double uxz = smooth(Math.min(1.0, u / 0.55));
-                double uy = u * u * (2.0 - u) * 0.35 + u * u * 0.65;
-                yield new Vec3(Mth.lerp(uxz, a.x, b.x), Mth.lerp(uy, a.y, b.y), Mth.lerp(uxz, a.z, b.z));
+                // High-rim straddle-then-sink: hips stay high while inside leg swings over the coaming,
+                // then lower smoothly with gravity into the seat cushion!
+                double uxz = smooth(Math.min(1.0, u / 0.50));
+                double crest = 0.06 * Math.sin(Math.PI * Math.min(1.0, u / 0.48));
+                double dropT = Mth.clamp((u - 0.30) / 0.70, 0.0, 1.0);
+                double uy = smooth(dropT);
+                yield new Vec3(
+                        Mth.lerp(uxz, a.x, b.x),
+                        Mth.lerp(uy, a.y, b.y) + crest,
+                        Mth.lerp(uxz, a.z, b.z));
             }
             case JUMP_DOWN -> {
-                // Step cleanly outward clear of the wing/LERX/fender lip FIRST, then drop smoothly under gravity!
+                // Athletic ledge hop-off: small natural push-off arc clearing wing/LERX lip first,
+                // then crisp gravity drop landing solidly on touchdown!
                 double dy = a.y - b.y;
                 if (dy > 0.80) {
-                    double uxz = smooth(Math.min(1.0, u / 0.55));
-                    double gu = Math.max(0.0, (u - 0.14) / 0.86);
-                    double y = Mth.lerp(Math.pow(gu, 1.85), a.y, b.y);
+                    double uxz = smooth(Math.min(1.0, u / 0.60));
+                    double pushArc = 0.10 * Math.sin(Math.PI * Math.min(1.0, u / 0.44));
+                    double gu = Mth.clamp((u - 0.12) / 0.88, 0.0, 1.0);
+                    double y = Mth.lerp(Math.pow(gu, 1.9), a.y, b.y) + pushArc;
                     yield new Vec3(Mth.lerp(uxz, a.x, b.x), y, Mth.lerp(uxz, a.z, b.z));
                 }
                 yield a.lerp(b, smooth(u));

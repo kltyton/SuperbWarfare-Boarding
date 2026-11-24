@@ -5,7 +5,7 @@ import com.atsuishio.superbwarfare.data.vehicle.subdata.VehicleType;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 
 enum BoardingProfile {
-    STEP(24), CAB(30), CHAIR(24), DECK(28), HATCH(56), COCKPIT(72), LADDER(56), RAMP(56),
+    STEP(24), CAB(30), CHAIR(24), DECK(28), HATCH(56), COCKPIT(72), MI28_DOOR(64), LADDER(56), RAMP(56),
     BRADLEY_DOOR(64), T90_HATCH(76), JU87_COCKPIT(68), GHAST_CLIMB(76);
 
     private final int ticks;
@@ -19,7 +19,7 @@ enum BoardingProfile {
     }
 
     boolean climbs() {
-        return this == HATCH || this == COCKPIT || this == LADDER || this == T90_HATCH
+        return this == HATCH || this == COCKPIT || this == MI28_DOOR || this == LADDER || this == T90_HATCH
                 || this == JU87_COCKPIT || this == GHAST_CLIMB;
     }
 
@@ -33,7 +33,8 @@ enum BoardingProfile {
             case "t_90a", "prism_tank", "bmp_2", "lav_150", "m_1a_2", "ztz_99a", "plz_05" ->
                     seatRise > 0.70 ? T90_HATCH : HATCH;
             case "yx_100" -> seatRise > 1.30 ? T90_HATCH : HATCH;
-            case "a_10a", "j_16", "mi_28" -> COCKPIT;
+            case "a_10a", "j_16" -> COCKPIT;
+            case "mi_28" -> MI28_DOOR;
             case "ah_6", "kv_16", "tom_6", "tow", "hpj_11", "vehicle_assembling_table" -> STEP;
             case "happiest_ghast" -> seatRise > 1.25 ? GHAST_CLIMB : DECK;
             case "air_sheep" -> seat == 1 && seatRise > 1.25 ? GHAST_CLIMB : DECK;
