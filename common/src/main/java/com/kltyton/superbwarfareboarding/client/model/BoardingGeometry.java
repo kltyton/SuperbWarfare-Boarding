@@ -42,12 +42,12 @@ public final class BoardingGeometry {
                     case "j_16.geo.json" -> CanopyGeometry.attachJ16Canopy(geometry);
                     case "mi_28.geo.json" -> CanopyGeometry.attachMi28Doors(geometry);
                     case "t_90a.geo.json" -> attachT90Hatches(geometry);
-                    case "plz_05.geo.json" -> wrapHinge(geometry, "ctd2", VehicleMotion.PLZ05_HATCH_BONE, 16.4, 32.8, -35.9);
+                    case "plz_05.geo.json" -> attachPlz05Hatches(geometry);
                     case "m_1a_2.geo.json" -> wrapHinge(geometry, "bone15", VehicleMotion.M1A2_HATCH_BONE, 10.0, 47.2, 22.0);
                     case "bmp_2.geo.json" -> wrapHinge(geometry, "bone44", VehicleMotion.BMP2_HATCH_BONE, 9.6, 48.2, 21.4);
                     case "prism_tank.geo.json" -> wrapHinge(geometry, "cangmen", VehicleMotion.PRISM_HATCH_BONE, -9.5, 36.2, -42.5);
                     case "lav_150.geo.json" -> attachLav150Hatch(geometry);
-                    case "ztz_99a.geo.json" -> wrapHinge(geometry, "octagon31", VehicleMotion.ZTZ99_HATCH_BONE, -12.5, 48.0, -2.5);
+                    case "ztz_99a.geo.json" -> wrapHinge(geometry, "bone25", VehicleMotion.ZTZ99_HATCH_BONE, -19.6, 49.0, 3.35);
                     default -> false;
                 };
                 if (changed) {
@@ -105,6 +105,15 @@ public final class BoardingGeometry {
         boolean gunner = wrapHinge(geometry, "canggai", VehicleMotion.T90_HATCH_BONE, 11.5, 41.2, 2.4);
         boolean commander = wrapHinge(geometry, "bone19", VehicleMotion.T90_COMMANDER_HATCH_BONE, -11.32, 42.2, -3.0);
         return gunner || commander;
+    }
+
+    /** Hinges PLZ-05's front hull driver hatch AND its three turret roof hatches at their real edges. */
+    private static boolean attachPlz05Hatches(JsonObject geometry) {
+        boolean driver = wrapHinge(geometry, "ctd2", VehicleMotion.PLZ05_HATCH_BONE, 16.4, 32.8, -35.9);
+        boolean turretLeftFront = wrapHinge(geometry, "move_titop1", VehicleMotion.PLZ05_TURRET_FRONT_HATCH_BONE, 18.4, 57.0, -0.9);
+        boolean turretLeftRear = wrapHinge(geometry, "titop5", VehicleMotion.PLZ05_TURRET_LEFT_HATCH_BONE, 18.4, 57.0, 28.7);
+        boolean turretRightRear = wrapHinge(geometry, "titop4", VehicleMotion.PLZ05_TURRET_RIGHT_HATCH_BONE, -19.2, 57.0, 27.8);
+        return driver || turretLeftFront || turretLeftRear || turretRightRear;
     }
 
     /** Moves the LAV-150 turret hatch handle onto the hatch bone before adding the rear hinge. */

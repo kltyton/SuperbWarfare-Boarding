@@ -117,7 +117,7 @@ final class SeatRoute {
         var dismount = entrySeat.getDismountInfo();
         Vec3 dismountHint = dismount == null || dismount.getPosition() == null ? null
                 : EntryPath.toLocal(vehicle, transform(dismount.getTransform(), dismount.getPosition()));
-        double clearance = player.getBbWidth() / 2.0 + (profile == BoardingProfile.CHAIR ? 0.16 : 0.26);
+        double clearance = player.getBbWidth() / 2.0 + (profile == BoardingProfile.CHAIR ? 0.18 : 0.32);
         hull = EntryPath.footprint(vehicle);
         var bounds = hull.inflate(clearance, 0, clearance);
         var portal = forcedPortal != null ? forcedPortal : EntryPortal.resolve(vehicle, entrySeatIndex, endpoint, start);
@@ -162,7 +162,7 @@ final class SeatRoute {
     }
 
     List<VehicleMotion.Joint> accessJoints() {
-        return VehicleMotion.accessJoints(vehicle);
+        return VehicleMotion.accessJoints(vehicle, entrySeatIndex, null);
     }
 
     int strides() {
@@ -303,7 +303,7 @@ final class SeatRoute {
         Vec3 localEntrySeat = EntryPath.toLocal(vehicle, entryEnd);
         var portal = forcedPortal != null ? forcedPortal : EntryPortal.resolve(vehicle, entrySeatIndex, localEntrySeat, start);
         portalAimLocal = portal != null ? portal.aim() : localEntrySeat;
-        MountMotion base = MountMotion.plan(profile, door, hull, start, localEntrySeat, portal);
+        MountMotion base = MountMotion.plan(vehicle, profile, door, hull, start, localEntrySeat, portal);
         if (base == null || entrySeatIndex == seatIndex) return base;
         // GTA-style interior slide: after climbing through entrySeatIndex's open door, slide over into seatIndex!
         Vec3 targetEnd = EntryPath.standingPoint(player, seatPosition(seat(seatIndex)), approachHeight);

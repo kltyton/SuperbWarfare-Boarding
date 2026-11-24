@@ -3,6 +3,7 @@ package com.kltyton.superbwarfareboarding.boarding;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.atsuishio.superbwarfare.tools.OBB;
 import com.kltyton.interactiveanimation.scene.playback.SceneCollision;
+import com.kltyton.superbwarfareboarding.boarding.surface.SurfaceClearance;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -18,16 +19,27 @@ public final class EntryPath {
     private EntryPath() {}
 
     public static AABB footprint(VehicleEntity vehicle) {
-        AABB custom = VehicleRigCatalog.customFootprint(vehicle);
-        if (custom != null) return custom;
-        var obb = vehicle.getCollisionOBB();
-        var corners = new ArrayList<Vec3>(8);
-        if (obb != null) {
-            for (var point : obb.getVertices()) corners.add(new Vec3(point.x, point.y, point.z));
-        } else {
-            AABB box = vehicle.getBoundingBox();
-            for (double x : new double[]{box.minX, box.maxX}) {
-                for (double z : new double[]{box.minZ, box.maxZ}) corners.add(new Vec3(x, box.minY, z));
+        AABB visual = SurfaceClearance.visualFootprint(vehicle);
+        if (visual != null) return visual;
+        var corners = new ArrayList<Vec3>(16);
+        var obbs = vehicle.getOBBs();
+        if (obbs != null && !obbs.isEmpty()) {
+            double vehY = vehicle.getY();
+            for (OBB part : obbs) {
+                AABB world = OBB.getWorldAABB(part);
+                if (world.minY > vehY + 2.05) continue;
+                for (var point : part.getVertices()) corners.add(new Vec3(point.x, point.y, point.z));
+            }
+        }
+        if (corners.isEmpty()) {
+            var obb = vehicle.getCollisionOBB();
+            if (obb != null) {
+                for (var point : obb.getVertices()) corners.add(new Vec3(point.x, point.y, point.z));
+            } else {
+                AABB box = vehicle.getBoundingBox();
+                for (double x : new double[]{box.minX, box.maxX}) {
+                    for (double z : new double[]{box.minZ, box.maxZ}) corners.add(new Vec3(x, box.minY, z));
+                }
             }
         }
         double minX = Double.POSITIVE_INFINITY;
@@ -45,7 +57,7 @@ public final class EntryPath {
             minY = Math.min(minY, local.y);
             maxY = Math.max(maxY, local.y);
         }
-        if (obb == null) maxY = vehicle.getBoundingBox().maxY - vehicle.getY();
+        if (maxY < 0.5) maxY = vehicle.getBoundingBox().maxY - vehicle.getY();
         return new AABB(minX, minY, minZ, maxX, maxY, maxZ);
     }
 
@@ -159,7 +171,7 @@ public final class EntryPath {
     }
 
     private static List<AABB> localObstacles(VehicleEntity vehicle, Player player, double localY) {
-        var raw = VehicleRigCatalog.localApproachObstacles(vehicle);
+        var raw = SurfaceClearance.visualApproachObstacles(vehicle);
         if (raw.isEmpty()) return List.of();
         var blocking = new ArrayList<AABB>(raw.size());
         double riderTop = localY + player.getBbHeight();

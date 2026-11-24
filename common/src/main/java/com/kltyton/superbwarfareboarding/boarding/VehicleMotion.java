@@ -19,6 +19,9 @@ public final class VehicleMotion {
     public static final String T90_HATCH_BONE = "superbwarfare_boarding:t90_hatch";
     public static final String T90_COMMANDER_HATCH_BONE = "superbwarfare_boarding:t90_commander_hatch";
     public static final String PLZ05_HATCH_BONE = "superbwarfare_boarding:plz05_hatch";
+    public static final String PLZ05_TURRET_FRONT_HATCH_BONE = "superbwarfare_boarding:plz05_turret_front_hatch";
+    public static final String PLZ05_TURRET_LEFT_HATCH_BONE = "superbwarfare_boarding:plz05_turret_left_hatch";
+    public static final String PLZ05_TURRET_RIGHT_HATCH_BONE = "superbwarfare_boarding:plz05_turret_right_hatch";
     public static final String M1A2_HATCH_BONE = "superbwarfare_boarding:m1a2_hatch";
     public static final String BMP2_HATCH_BONE = "superbwarfare_boarding:bmp2_hatch";
     public static final String PRISM_HATCH_BONE = "superbwarfare_boarding:prism_hatch";
@@ -29,10 +32,12 @@ public final class VehicleMotion {
     private static final Set<String> MOTION_BONES = Set.of(
             "root", "bone", "tow", "bone3",
             "door_left", "door_right", "canggai", "cangmen", "door", "door2",
-            "ctd2", "bone44", "bone11", "bone12", "bone15", "bone19", "bone5", "bone8", "octagon31",
+            "ctd2", "move_titop1", "titop4", "titop5",
+            "bone44", "bone11", "bone12", "bone15", "bone19", "bone25", "bone5", "bone8",
             BRADLEY_DOOR_BONE, A10_CANOPY_BONE, J16_CANOPY_BONE, JU87_PILOT_CANOPY_BONE,
             MI28_PILOT_DOOR_BONE, MI28_GUNNER_DOOR_BONE, T90_HATCH_BONE, T90_COMMANDER_HATCH_BONE,
-            PLZ05_HATCH_BONE, M1A2_HATCH_BONE, BMP2_HATCH_BONE, PRISM_HATCH_BONE, LAV150_HATCH_BONE,
+            PLZ05_HATCH_BONE, PLZ05_TURRET_FRONT_HATCH_BONE, PLZ05_TURRET_LEFT_HATCH_BONE, PLZ05_TURRET_RIGHT_HATCH_BONE,
+            M1A2_HATCH_BONE, BMP2_HATCH_BONE, PRISM_HATCH_BONE, LAV150_HATCH_BONE,
             ZTZ99_HATCH_BONE);
     // LAV-25 / LAV-AD have side-hinged double rear doors tilted along the -15.5 deg rear armor slope.
     private static final List<Joint> LAV_DOUBLE_DOORS = List.of(
@@ -46,9 +51,13 @@ public final class VehicleMotion {
     private static final List<Joint> T90_COMMANDER_HATCH = List.of(new Joint(T90_COMMANDER_HATCH_BONE, new Vec3(1.26, 0, 0)));
     private static final List<Joint> PRISM_HATCH = List.of(new Joint(PRISM_HATCH_BONE, new Vec3(-1.15, 0, 0)));
     private static final List<Joint> PLZ05_HATCH = List.of(new Joint(PLZ05_HATCH_BONE, new Vec3(-1.15, 0, 0)));
+    private static final List<Joint> PLZ05_TURRET_FRONT_HATCH = List.of(new Joint(PLZ05_TURRET_FRONT_HATCH_BONE, new Vec3(-1.15, 0, 0)));
+    private static final List<Joint> PLZ05_TURRET_LEFT_HATCH = List.of(new Joint(PLZ05_TURRET_LEFT_HATCH_BONE, new Vec3(-1.15, 0, 0)));
+    private static final List<Joint> PLZ05_TURRET_RIGHT_HATCH = List.of(new Joint(PLZ05_TURRET_RIGHT_HATCH_BONE, new Vec3(-1.15, 0, 0)));
     private static final List<Joint> BMP2_HATCH = List.of(new Joint(BMP2_HATCH_BONE, new Vec3(-1.15, 0, 0)));
     private static final List<Joint> LAV150_HATCH = List.of(new Joint(LAV150_HATCH_BONE, new Vec3(-1.15, 0, 0)));
-    private static final List<Joint> ZTZ99_HATCH = List.of(new Joint(ZTZ99_HATCH_BONE, new Vec3(-1.15, 0, 0)));
+    // ZTZ-99A commander hatch (bone25) hinged on outer-right edge (-19.6) swings cleanly UP & OUTWARD away from HMG!
+    private static final List<Joint> ZTZ99_HATCH = List.of(new Joint(ZTZ99_HATCH_BONE, new Vec3(0, 0, -1.15)));
     private static final List<Joint> M1A2_HATCH = List.of(new Joint(M1A2_HATCH_BONE, new Vec3(-1.15, 0, 0)));
     // Ju 87 Stuka: full sliding greenhouse hood along fuselage rails (windscreen & 4.5m antenna wire stay still).
     private static final List<Joint> JU87_PILOT_CANOPY =
@@ -89,7 +98,12 @@ public final class VehicleMotion {
             case "bradley" -> BRADLEY_DOOR;
             case "t_90a" -> seatIndex == 1 ? T90_COMMANDER_HATCH : T90_HATCH;
             case "prism_tank" -> PRISM_HATCH;
-            case "plz_05" -> PLZ05_HATCH;
+            case "plz_05" -> switch (seatIndex) {
+                case 1 -> PLZ05_TURRET_FRONT_HATCH;
+                case 2 -> PLZ05_TURRET_LEFT_HATCH;
+                case 3 -> PLZ05_TURRET_RIGHT_HATCH;
+                default -> PLZ05_HATCH;
+            };
             case "bmp_2" -> BMP2_HATCH;
             case "lav_150" -> LAV150_HATCH;
             case "ztz_99a" -> ZTZ99_HATCH;

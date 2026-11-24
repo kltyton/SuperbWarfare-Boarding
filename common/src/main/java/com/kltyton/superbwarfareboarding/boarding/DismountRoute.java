@@ -81,7 +81,7 @@ final class DismountRoute {
         Vec3 mouth = portal == null ? localSeat : portal.lip();
         Vec3 hint = portal != null && portal.approachHint() != null ? portal.approachHint() : nativeExit;
         var hull = EntryPath.footprint(vehicle);
-        double clearance = player.getBbWidth() * 0.5 + 0.24;
+        double clearance = player.getBbWidth() * 0.5 + 0.32;
         var bounds = hull.inflate(clearance, 0, clearance);
         Vec3 edge = portal == null ? EntryPath.entrance(bounds, mouth, hint, nativeExit)
                 : portal.entrance(bounds, hint, nativeExit);
@@ -121,7 +121,7 @@ final class DismountRoute {
                 lastLanding = EntryPath.toLocal(vehicle, landing);
                 var profile = door == null ? BoardingProfile.of(vehicle, seat, standingSeat.y - landing.y) : BoardingProfile.CAB;
                 double releaseFrac = releaseFraction(profile);
-                var motion = MountMotion.planDismount(profile, door, hull, localSeat, lastLanding, candidate.portal, releaseFrac);
+                var motion = MountMotion.planDismount(vehicle, profile, door, hull, localSeat, lastLanding, candidate.portal, releaseFrac);
                 if (motion == null) continue;
                 planned++;
                 Vec3 departure = EntryPath.toWorld(vehicle, motion.sample(0));

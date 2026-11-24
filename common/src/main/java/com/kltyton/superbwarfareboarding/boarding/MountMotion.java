@@ -1,5 +1,8 @@
 package com.kltyton.superbwarfareboarding.boarding;
 
+import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
+import com.kltyton.superbwarfareboarding.boarding.surface.SurfaceClearance;
+import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
@@ -70,7 +73,19 @@ final class MountMotion {
     }
 
     /** Plans the boarding trajectory from vehicle-local ground/platform start into the seat/interior. */
-    static MountMotion plan(BoardingProfile profile, CabDoor door, AABB hull, Vec3 start, Vec3 seat, EntryPortal portal) {
+    static MountMotion plan(VehicleEntity vehicle, BoardingProfile profile, CabDoor door, AABB hull,
+                            Vec3 start, Vec3 seat, EntryPortal portal) {
+        MountMotion raw = planRaw(vehicle, profile, door, hull, start, seat, portal);
+        if (raw == null || vehicle == null) return raw;
+        boolean enclosedDoor = door != null
+                || profile == BoardingProfile.BRADLEY_DOOR
+                || profile == BoardingProfile.RAMP
+                || profile == BoardingProfile.MI28_DOOR;
+        return raw.refineWithVisualSurface(vehicle, start.y, false, enclosedDoor);
+    }
+
+    private static MountMotion planRaw(VehicleEntity vehicle, BoardingProfile profile, CabDoor door, AABB hull,
+                                       Vec3 start, Vec3 seat, EntryPortal portal) {
         Vec3 opening = portal == null ? seat : portal.lip();
         Vec3 destination = portal != null && portal.interior() != null ? portal.interior() : seat;
         Vec3 edge = sill(hull, start, opening);
@@ -221,39 +236,56 @@ final class MountMotion {
                     new Contact(1.00, destination, MotionMode.SMOOTH)));
         }
 
-        // Multi-stage tank / APC hatch climb: stand clear outside ERA skirt -> L-shaped hoist onto fender -> walk to turret hatch!
+        // Multi-stage tank / APC hatch climb: stand clear outside ERA skirt -> vertical-first hoist onto fender ->
+        // stay 100% outside live-rotated turret cheeks -> vertical-first hoist onto turret roof -> walk to hatch!
         if ((profile == BoardingProfile.T90_HATCH || profile == BoardingProfile.HATCH)
                 && portal != null && portal.exteriorStep() != null && portal.foothold() != null) {
             Vec3 fender = portal.exteriorStep();
             Vec3 deck = portal.foothold();
             if (opening.y - start.y > 3.60 || start.y > opening.y + 0.70) return null;
+            var allSolids = vehicle != null ? SurfaceClearance.allSolidsLocal(vehicle) : List.<AABB>of();
+            var turretSolids = vehicle != null ? SurfaceClearance.turretSolidsLocal(vehicle) : List.<AABB>of();
             double approachY = start.y;
-            double fenderY = Math.max(approachY, fender.y);
-            double deckY = Math.max(fenderY, deck.y);
+            double fenderY = Math.max(approachY, SurfaceClearance.supportTopY(allSolids, fender.x, fender.z, fender.y, SurfaceClearance.FOOT_RADIUS, 0.45));
+            double deckY = Math.max(fenderY, SurfaceClearance.supportTopY(allSolids, deck.x, deck.z, deck.y, SurfaceClearance.FOOT_RADIUS, 0.45));
             double lipY = Math.max(deckY, opening.y);
             double sideSign = Math.signum(start.x - opening.x);
             if (sideSign == 0) sideSign = Math.signum(fender.x);
 
-            Vec3 atTrack = portal.approachHint() != null
+            Vec3 rawAtTrack = portal.approachHint() != null
                     ? new Vec3(portal.approachHint().x, approachY, portal.approachHint().z)
                     : new Vec3(sideSign * (Math.abs(fender.x) + 0.90), approachY, fender.z);
+            Vec3 atTrack = SurfaceClearance.pushClearOutward(allSolids, rawAtTrack, fender, SurfaceClearance.BODY_RADIUS);
             Vec3 onFender = new Vec3(fender.x, fenderY, fender.z);
+            Vec3 besideHatch = new Vec3(deck.x, deckY, deck.z);
 
             boolean climbsTurret = deckY - fenderY > 0.35 && Math.abs(deck.z - fender.z) > 0.75;
-            Vec3 turretBase = climbsTurret
-                    ? new Vec3(fender.x, fenderY, Mth.lerp(0.68, fender.z, deck.z))
-                    : onFender.lerp(new Vec3(deck.x, deckY, deck.z), 0.50);
-            Vec3 besideHatch = new Vec3(deck.x, deckY, deck.z);
-            Vec3 overHatch = new Vec3(opening.x, lipY, opening.z);
+            Vec3 turretBase;
+            if (climbsTurret) {
+                Vec3 rawBase = SurfaceClearance.findTurretClimbBase(turretSolids, onFender, besideHatch);
+                double baseY = Math.max(fenderY, SurfaceClearance.supportTopY(allSolids, rawBase.x, rawBase.z, fenderY, SurfaceClearance.FOOT_RADIUS, 0.35));
+                turretBase = new Vec3(rawBase.x, baseY, rawBase.z);
+            } else {
+                Vec3 mid = onFender.lerp(besideHatch, 0.50);
+                double midY = SurfaceClearance.supportTopY(allSolids, mid.x, mid.z, mid.y, SurfaceClearance.FOOT_RADIUS, 0.45);
+                turretBase = new Vec3(mid.x, midY, mid.z);
+            }
+            // If turret roof blocks the straight line from turretBase to besideHatch, step up onto turret roof edge first
+            double blockTop = climbsTurret
+                    ? SurfaceClearance.maxBlockingTopY(turretSolids, turretBase, besideHatch, SurfaceClearance.BODY_RADIUS)
+                    : Double.NEGATIVE_INFINITY;
+            double roofY = Double.isFinite(blockTop) ? Math.max(deckY, blockTop + 0.02) : deckY;
+            Vec3 besideHatchSafe = new Vec3(besideHatch.x, roofY, besideHatch.z);
+            Vec3 overHatch = new Vec3(opening.x, Math.max(roofY, lipY), opening.z);
             Vec3 dropInside = new Vec3(destination.x, destination.y, destination.z);
 
             return new MountMotion(List.of(
                     new Contact(0.00, start, MotionMode.SMOOTH),
                     new Contact(0.07, atTrack, MotionMode.WALK),
                     new Contact(0.25, onFender, MotionMode.CLIMB_UP),
-                    new Contact(0.39, turretBase, climbsTurret ? MotionMode.WALK : MotionMode.CLIMB_UP),
-                    new Contact(0.53, besideHatch, climbsTurret ? MotionMode.CLIMB_UP : MotionMode.WALK),
-                    new Contact(0.66, besideHatch, MotionMode.SMOOTH),
+                    new Contact(0.38, turretBase, climbsTurret ? MotionMode.WALK : MotionMode.CLIMB_UP),
+                    new Contact(0.54, besideHatchSafe, climbsTurret ? MotionMode.CLIMB_UP : MotionMode.WALK),
+                    new Contact(0.66, besideHatchSafe, MotionMode.SMOOTH),
                     new Contact(0.76, overHatch, MotionMode.WALK),
                     new Contact(0.87, dropInside, MotionMode.DROP_IN),
                     new Contact(1.00, dropInside, MotionMode.SMOOTH)));
@@ -459,8 +491,19 @@ final class MountMotion {
      *   - boots step onto real .geo.json sills/steps/rungs/wheels/fenders,
      *   - hands physically push every door/hatch/canopy shut while facing it!
      */
-    static MountMotion planDismount(BoardingProfile profile, CabDoor door, AABB hull, Vec3 seat, Vec3 landing,
-                                    EntryPortal portal, double releaseFrac) {
+    static MountMotion planDismount(VehicleEntity vehicle, BoardingProfile profile, CabDoor door, AABB hull,
+                                    Vec3 seat, Vec3 landing, EntryPortal portal, double releaseFrac) {
+        MountMotion raw = planDismountRaw(vehicle, profile, door, hull, seat, landing, portal, releaseFrac);
+        if (raw == null || vehicle == null) return raw;
+        boolean enclosedDoor = door != null
+                || profile == BoardingProfile.BRADLEY_DOOR
+                || profile == BoardingProfile.RAMP
+                || profile == BoardingProfile.MI28_DOOR;
+        return raw.refineWithVisualSurface(vehicle, landing.y, true, enclosedDoor);
+    }
+
+    private static MountMotion planDismountRaw(VehicleEntity vehicle, BoardingProfile profile, CabDoor door, AABB hull,
+                                               Vec3 seat, Vec3 landing, EntryPortal portal, double releaseFrac) {
         Vec3 origin = portal != null && portal.interior() != null ? portal.interior() : seat;
         Vec3 opening = portal == null ? seat : portal.lip();
         double drop = Math.max(0, opening.y - landing.y);
@@ -470,33 +513,36 @@ final class MountMotion {
 
         // 1. Tanks & APC top hatches (release=0.16):
         // 0..0.16 open hatch inside -> 0.28 climb to rim -> 0.38 step beside hatch & face hatch ->
-        // 0.38..0.52 close hatch -> 0.60..0.76 walk to outer fender edge -> 0.76..0.89 straight drop right beside hull -> 1.00 cushion!
+        // 0.38..0.52 close hatch -> 0.60..0.76 clear turret cheek onto fender outer edge -> 0.76..0.89 horizontal-first drop -> 1.00 cushion!
         if ((profile == BoardingProfile.T90_HATCH || profile == BoardingProfile.HATCH)
                 && portal != null && portal.exteriorStep() != null && portal.foothold() != null) {
             if (opening.y - landing.y > 3.60 || landing.y > opening.y + 0.70) return null;
+            var allSolids = vehicle != null ? SurfaceClearance.allSolidsLocal(vehicle) : List.<AABB>of();
+            var turretSolids = vehicle != null ? SurfaceClearance.turretSolidsLocal(vehicle) : List.<AABB>of();
             Vec3 deck = portal.foothold();
             Vec3 fender = portal.exteriorStep();
-            double deckY = Math.max(landing.y, deck.y);
-            double fenderY = Math.max(landing.y, fender.y);
+            double deckY = Math.max(landing.y, SurfaceClearance.supportTopY(allSolids, deck.x, deck.z, deck.y, SurfaceClearance.FOOT_RADIUS, 0.45));
+            double fenderY = Math.max(landing.y, SurfaceClearance.supportTopY(allSolids, fender.x, fender.z, fender.y, SurfaceClearance.FOOT_RADIUS, 0.45));
             Vec3 rim = new Vec3(opening.x, Math.max(deckY, opening.y), opening.z);
             Vec3 besideHatch = new Vec3(deck.x, deckY, deck.z);
             double fSign = Math.signum(fender.x) != 0 ? Math.signum(fender.x) : sideSign;
-            Vec3 fenderOuter = new Vec3(fSign * (Math.abs(fender.x) + 0.26), fenderY, fender.z);
+            Vec3 fenderOuter = new Vec3(fSign * (Math.abs(fender.x) + 0.24), fenderY, fender.z);
+            Vec3 safeLanding = SurfaceClearance.pushClearOutward(allSolids, landing, fender, SurfaceClearance.BODY_RADIUS);
             boolean hasTwoTiers = deckY - fenderY > 0.35;
             if (hasTwoTiers) {
-                Vec3 turretRim = new Vec3(fender.x, deckY, besideHatch.z);
-                Vec3 sideFender = new Vec3(fender.x, fenderY, Mth.lerp(0.35, besideHatch.z, fender.z));
+                Vec3 clearFender = SurfaceClearance.findTurretClimbBase(turretSolids, new Vec3(fender.x, fenderY, fender.z), besideHatch);
+                double clearFenderY = Math.max(fenderY, SurfaceClearance.supportTopY(allSolids, clearFender.x, clearFender.z, fenderY, SurfaceClearance.FOOT_RADIUS, 0.35));
+                Vec3 sideFender = new Vec3(clearFender.x, clearFenderY, clearFender.z);
                 return new MountMotion(List.of(
                         new Contact(0.00, origin, MotionMode.SMOOTH),
                         new Contact(releaseFrac, origin, MotionMode.SMOOTH),
                         new Contact(0.28, rim, MotionMode.CLIMB_UP),
                         new Contact(0.38, besideHatch, MotionMode.WALK),
                         new Contact(0.52, besideHatch, MotionMode.SMOOTH),     // facing hatch, hand closes lid!
-                        new Contact(0.60, turretRim, MotionMode.WALK),
-                        new Contact(0.68, sideFender, MotionMode.WALK),        // step cleanly onto side fender
+                        new Contact(0.67, sideFender, MotionMode.JUMP_DOWN),   // horizontal-first step off turret roof clear of cheek!
                         new Contact(0.76, fenderOuter, MotionMode.WALK),       // step to outer fender lip
-                        new Contact(0.89, landing, MotionMode.JUMP_DOWN),      // crisp straight gravity drop (ZERO hopLift!)
-                        new Contact(1.00, landing, MotionMode.SMOOTH)));       // crouch cushion & stand up
+                        new Contact(0.89, safeLanding, MotionMode.JUMP_DOWN),  // horizontal-first gravity drop clear of skirt!
+                        new Contact(1.00, safeLanding, MotionMode.SMOOTH)));   // crouch cushion & stand up
             }
             return new MountMotion(List.of(
                     new Contact(0.00, origin, MotionMode.SMOOTH),
@@ -505,8 +551,8 @@ final class MountMotion {
                     new Contact(0.38, besideHatch, MotionMode.WALK),
                     new Contact(0.52, besideHatch, MotionMode.SMOOTH),
                     new Contact(0.74, fenderOuter, MotionMode.WALK),
-                    new Contact(0.88, landing, MotionMode.JUMP_DOWN),
-                    new Contact(1.00, landing, MotionMode.SMOOTH)));
+                    new Contact(0.88, safeLanding, MotionMode.JUMP_DOWN),
+                    new Contact(1.00, safeLanding, MotionMode.SMOOTH)));
         }
 
         // 2. Fighter / gunship / dive-bomber cockpits (release=0.16)
@@ -715,9 +761,69 @@ final class MountMotion {
         }
 
         // 6. Default (step / chair / deck / simple ladder): rescale reversed plan() cleanly into [releaseFrac..1.0]
-        MountMotion forward = plan(profile, door, hull, landing, seat, portal);
+        MountMotion forward = planRaw(vehicle, profile, door, hull, landing, seat, portal);
         if (forward == null) return null;
         return forward.reversedInto(releaseFrac, origin);
+    }
+
+    /**
+     * Universal visual-surface post-refinement across ALL vehicles:
+     *  - Exterior ground stand-off points are pushed clear outside any visual hull/turret wall by BODY_RADIUS.
+     *  - Exterior elevated points (fenders, wings, gunwales, decks) snap onto real .geo.json top surfaces.
+     *  - Any exterior WALK segment that slices through a rising visual ledge/cheek upgrades to vertical-first CLIMB_UP
+     *    (or lifts cleanly above the blocking visual crest) so no vehicle clips its own visual mesh!
+     */
+    private MountMotion refineWithVisualSurface(VehicleEntity vehicle, double groundY,
+                                                boolean isDismount, boolean enclosedDoor) {
+        var allSolids = SurfaceClearance.allSolidsLocal(vehicle);
+        if (allSolids.isEmpty() || contacts.size() < 3) return this;
+        var out = new ArrayList<Contact>(contacts);
+        int last = out.size() - 1;
+        // Identify exterior range: exclude final interior seat entry on mount, and initial interior hold on dismount
+        int startIdx = isDismount ? 2 : 1;
+        int endIdx = isDismount ? last : Math.max(1, last - 2);
+        Vec3 interiorRef = isDismount ? out.get(0).position : out.get(last).position;
+
+        for (int i = startIdx; i <= endIdx; i++) {
+            Contact c = out.get(i);
+            Vec3 p = c.position;
+            boolean nearGround = Math.abs(p.y - groundY) <= 0.16;
+            if (nearGround) {
+                // Keep ground stand-off / landing spots strictly outside solid hull walls
+                if (!enclosedDoor || (isDismount && i >= last - 1) || (!isDismount && i <= 1)) {
+                    Vec3 pushed = SurfaceClearance.pushClearOutward(allSolids, p, interiorRef, SurfaceClearance.BODY_RADIUS);
+                    if (pushed != p) out.set(i, new Contact(c.time, pushed, c.mode));
+                }
+            } else if (!enclosedDoor && c.mode != MotionMode.DROP_IN) {
+                double surfY = SurfaceClearance.supportTopY(allSolids, p.x, p.z, p.y, SurfaceClearance.FOOT_RADIUS, 0.42);
+                if (surfY > p.y + 0.005) {
+                    out.set(i, new Contact(c.time, new Vec3(p.x, surfY, p.z), c.mode));
+                }
+            }
+        }
+
+        if (!enclosedDoor) {
+            for (int i = startIdx + 1; i <= endIdx; i++) {
+                Contact prev = out.get(i - 1);
+                Contact cur = out.get(i);
+                if (cur.mode != MotionMode.WALK) continue;
+                double dy = cur.position.y - prev.position.y;
+                if (dy > 0.25) {
+                    out.set(i, new Contact(cur.time, cur.position, MotionMode.CLIMB_UP));
+                } else if (dy < -0.55) {
+                    out.set(i, new Contact(cur.time, cur.position, MotionMode.JUMP_DOWN));
+                } else {
+                    double blockTop = SurfaceClearance.maxBlockingTopY(allSolids, prev.position, cur.position, SurfaceClearance.FOOT_RADIUS);
+                    if (Double.isFinite(blockTop) && blockTop <= Math.max(prev.position.y, cur.position.y) + 0.45) {
+                        double safeY = blockTop + 0.03;
+                        if (safeY > cur.position.y) {
+                            out.set(i, new Contact(cur.time, new Vec3(cur.position.x, safeY, cur.position.z), MotionMode.CLIMB_UP));
+                        }
+                    }
+                }
+            }
+        }
+        return new MountMotion(out);
     }
 
     private MountMotion reversedInto(double releaseFrac, Vec3 origin) {
@@ -726,7 +832,7 @@ final class MountMotion {
         for (int i = contacts.size() - 1; i >= 0; i--) {
             Contact c = contacts.get(i);
             MotionMode mode = switch (c.mode) {
-                case CLIMB_UP -> MotionMode.WALK;
+                case CLIMB_UP -> MotionMode.JUMP_DOWN;
                 case DROP_IN -> MotionMode.CLIMB_UP;
                 default -> c.mode;
             };
@@ -757,13 +863,13 @@ final class MountMotion {
                 yield a.lerp(b, Mth.clamp(s, 0, 1));
             }
             case CLIMB_UP -> {
-                // Athletic curved parabolic vault arc: rises cleanly clear outside wing/LERX/ERA edge FIRST
-                // with a subtle 7cm natural vault crest, then curves smoothly forward onto the top deck!
-                if (b.y > a.y + 0.35) {
-                    double tRise = Mth.clamp(u / 0.66, 0.0, 1.0);
-                    double uy = 1.0 - Math.pow(1.0 - tRise, 2.2);
-                    double crest = 0.07 * Math.sin(Math.PI * Mth.clamp((u - 0.38) / 0.62, 0.0, 1.0));
-                    double uxz = smooth(Math.max(0.0, (u - 0.42) / 0.58));
+                // Strictly vertical-first vault: boots rise 100% ABOVE the visual ledge (fender/wing/gunwale/turret)
+                // by u=0.48 with an 8cm step-over crest BEFORE horizontal inward movement (u=0.44..1.00) begins!
+                if (b.y > a.y + 0.22) {
+                    double tRise = Mth.clamp(u / 0.48, 0.0, 1.0);
+                    double uy = 1.0 - Math.pow(1.0 - tRise, 2.4);
+                    double crest = 0.08 * Math.sin(Math.PI * Mth.clamp((u - 0.36) / 0.64, 0.0, 1.0));
+                    double uxz = smooth(Math.max(0.0, (u - 0.44) / 0.56));
                     yield new Vec3(
                             Mth.lerp(uxz, a.x, b.x),
                             Mth.lerp(uy, a.y, b.y) + crest,
@@ -784,14 +890,14 @@ final class MountMotion {
                         Mth.lerp(uxz, a.z, b.z));
             }
             case JUMP_DOWN -> {
-                // Athletic ledge hop-off: small natural push-off arc clearing wing/LERX lip first,
-                // then crisp gravity drop landing solidly on touchdown!
+                // Strictly horizontal-first ledge drop: clears outward completely past the visual lip (u=0..0.44)
+                // BEFORE gravity drop (u=0.24..1.00) so legs/torso never slice through fenders, wings, or gunwales!
                 double dy = a.y - b.y;
-                if (dy > 0.80) {
-                    double uxz = smooth(Math.min(1.0, u / 0.60));
-                    double pushArc = 0.10 * Math.sin(Math.PI * Math.min(1.0, u / 0.44));
-                    double gu = Mth.clamp((u - 0.12) / 0.88, 0.0, 1.0);
-                    double y = Mth.lerp(Math.pow(gu, 1.9), a.y, b.y) + pushArc;
+                if (dy > 0.45) {
+                    double uxz = smooth(Math.min(1.0, u / 0.44));
+                    double pushArc = 0.06 * Math.sin(Math.PI * Math.min(1.0, u / 0.34));
+                    double gu = Mth.clamp((u - 0.24) / 0.76, 0.0, 1.0);
+                    double y = Mth.lerp(Math.pow(gu, 1.85), a.y, b.y) + pushArc;
                     yield new Vec3(Mth.lerp(uxz, a.x, b.x), y, Mth.lerp(uxz, a.z, b.z));
                 }
                 yield a.lerp(b, smooth(u));
