@@ -8,6 +8,9 @@ import com.kltyton.superbwarfareboarding.boarding.BoardingScenes;
 import com.kltyton.superbwarfareboarding.boarding.DismountScenes;
 import com.kltyton.superbwarfareboarding.boarding.EntryPath;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
@@ -24,6 +27,7 @@ public final class BoardingView {
     private static final int PULL_BACK_TICKS = 15;
     private static final int RETURN_TICKS = 15;
     private static final double SELF_CLEARANCE = 1.05;
+    private static final Map<UUID, Integer> ACTIVE_SEATS = new HashMap<>();
     private static Runnable dismountSkip = () -> {};
     private static Session session;
     private static LocalPlayer observedPlayer;
@@ -41,6 +45,34 @@ public final class BoardingView {
     public static boolean ownsVehicleContact(VehicleEntity vehicle, Entity rider) {
         return ClientScenes.subjectFor(rider, BoardingScenes.RIDER) == vehicle
                 || ClientScenes.subjectFor(rider, DismountScenes.RIDER) == vehicle;
+    }
+
+    /** Tracks the exact seat index currently boarding or dismounting this vehicle on the client. */
+    public static int activeSeat(VehicleEntity vehicle) {
+        for (var player : vehicle.level().players()) {
+            if (!ownsVehicleContact(vehicle, player)) continue;
+            if (player.getVehicle() == vehicle) {
+                int seated = vehicle.getSeatIndex(player);
+                if (seated >= 0) {
+                    ACTIVE_SEATS.put(vehicle.getUUID(), seated);
+                    return seated;
+                }
+            }
+            Integer cached = ACTIVE_SEATS.get(vehicle.getUUID());
+            if (cached != null) return cached;
+            int free = vehicle.getOrderedPassengers().indexOf(null);
+            if (free >= 0) {
+                ACTIVE_SEATS.put(vehicle.getUUID(), free);
+                return free;
+            }
+            return -1;
+        }
+        ACTIVE_SEATS.remove(vehicle.getUUID());
+        return -1;
+    }
+
+    public static void clearActiveSeat(VehicleEntity vehicle) {
+        ACTIVE_SEATS.remove(vehicle.getUUID());
     }
 
     public static boolean isAnimating(VehicleEntity vehicle) {
@@ -249,6 +281,7 @@ public final class BoardingView {
 
     public static void restore(Minecraft game) {
         if (session == null) return;
+        ACTIVE_SEATS.remove(session.vehicle.getUUID());
         game.options.setCameraType(session.previous);
         session = null;
     }

@@ -41,7 +41,7 @@ public final class BoardingGeometry {
                     case "a_10a.geo.json" -> CanopyGeometry.attachA10RearCanopy(geometry);
                     case "j_16.geo.json" -> CanopyGeometry.attachJ16Canopy(geometry);
                     case "mi_28.geo.json" -> CanopyGeometry.attachMi28Doors(geometry);
-                    case "t_90a.geo.json" -> wrapHinge(geometry, "canggai", VehicleMotion.T90_HATCH_BONE, 11.5, 41.2, 13.6);
+                    case "t_90a.geo.json" -> attachT90Hatches(geometry);
                     case "plz_05.geo.json" -> wrapHinge(geometry, "ctd2", VehicleMotion.PLZ05_HATCH_BONE, 16.4, 32.8, -35.9);
                     case "m_1a_2.geo.json" -> wrapHinge(geometry, "bone15", VehicleMotion.M1A2_HATCH_BONE, 10.0, 47.2, 22.0);
                     case "bmp_2.geo.json" -> wrapHinge(geometry, "bone44", VehicleMotion.BMP2_HATCH_BONE, 9.6, 48.2, 21.4);
@@ -98,6 +98,13 @@ public final class BoardingGeometry {
             }
         }
         return moved;
+    }
+
+    /** Hinges both T-90A turret hatches at their real front edges so they swing cleanly forward & up. */
+    private static boolean attachT90Hatches(JsonObject geometry) {
+        boolean gunner = wrapHinge(geometry, "canggai", VehicleMotion.T90_HATCH_BONE, 11.5, 41.2, 2.4);
+        boolean commander = wrapHinge(geometry, "bone19", VehicleMotion.T90_COMMANDER_HATCH_BONE, -11.32, 42.2, -3.0);
+        return gunner || commander;
     }
 
     /** Moves the LAV-150 turret hatch handle onto the hatch bone before adding the rear hinge. */

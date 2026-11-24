@@ -86,7 +86,10 @@ abstract class BoardingVehicleRendererMixin {
                                           float partialTick, Operation<Void> original) {
         original.call(renderer, vehicle, model, poseStack, yaw, partialTick);
         var actor = LegacyActorRenderer.current();
-        if (actor == null || actor.visual() != vehicle || !actor.role().equals("primary")) return;
+        if (actor == null || actor.visual() != vehicle || !actor.role().equals("primary")) {
+            BoardingView.clearActiveSeat(vehicle);
+            return;
+        }
         for (var entry : actor.bones().entrySet()) {
             String channel = entry.getKey();
             var pose = entry.getValue().sample(actor.seconds());
@@ -94,8 +97,9 @@ abstract class BoardingVehicleRendererMixin {
                 var bone = superbwarfareBoarding$bone(model, VehicleMotion.loadBearingBone(vehicle), actor);
                 if (bone != null) superbwarfareBoarding$apply(bone, pose.position(), pose.rotation());
             } else if (channel.equals(VehicleMotion.ACCESS)) {
+                int seatIndex = BoardingView.activeSeat(vehicle);
                 Vec3 riderLocal = superbwarfareBoarding$riderLocal(vehicle, partialTick);
-                for (var joint : VehicleMotion.accessJoints(vehicle, riderLocal)) {
+                for (var joint : VehicleMotion.accessJoints(vehicle, seatIndex, riderLocal)) {
                     var bone = superbwarfareBoarding$bone(model, joint.name(), actor);
                     if (bone == null) continue;
                     superbwarfareBoarding$restoreBone(bone);

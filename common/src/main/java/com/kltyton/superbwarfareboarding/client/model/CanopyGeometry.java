@@ -8,7 +8,10 @@ import com.kltyton.superbwarfareboarding.boarding.VehicleMotion;
 final class CanopyGeometry {
     private static final int[] J16_FRAME_CUBES = {164, 163, 162, 161, 154, 153, 152, 8, 7, 6, 5, 4, 3, 2, 1};
     private static final boolean[] J16_MOVING_GLASS_POLYS = new boolean[92];
-    private static final int[] JU87_PILOT_HOOD_CUBES = {13, 12, 2, 1, 0};
+    // Ju-87 pilot sliding greenhouse hood: middle arch + left/right lower rails from bone7,
+    // plus pilot top spine (#8) and rear pilot arch (#0,#9..#12) from bone9 (sorted descending per bone).
+    private static final int[] JU87_BONE7_HOOD_CUBES = {13, 12, 11, 3, 2, 1, 0};
+    private static final int[] JU87_BONE9_HOOD_CUBES = {12, 11, 10, 9, 8, 0};
 
     static {
         // J-16 body.poly_mesh polygons #0..#19 are canopy glass; #0,#5,#10,#15 are the fixed front windscreen.
@@ -139,8 +142,9 @@ final class CanopyGeometry {
     }
 
     /**
-     * Splits ONLY the pilot's sliding canopy bow out of Ju 87's bone7 so the pilot hood slides cleanly
-     * backward (+Z) while the fixed front windscreen, center bridge, and 4.5m radio antenna wire (bone9) stay still.
+     * Splits the full pilot sliding canopy greenhouse hood out of Ju 87's bone7 and bone9 so the entire
+     * pilot cockpit roof and side frames slide cleanly backward (+Z) while the fixed front windscreen
+     * (bone8, bone7#4..#10), center bridge, and 4.5m radio antenna wire (bone9#1..#7) stay stationary.
      */
     static boolean attachJu87SlidingCanopy(JsonObject geometry) {
         var bones = geometry.getAsJsonArray("bones");
@@ -148,13 +152,18 @@ final class CanopyGeometry {
             return false;
         }
         JsonObject bone7 = BoardingGeometry.findBone(bones, "bone7");
-        if (bone7 == null) return false;
-        var cubes = bone7.getAsJsonArray("cubes");
-        if (cubes == null || cubes.size() < 14) return false;
+        JsonObject bone9 = BoardingGeometry.findBone(bones, "bone9");
+        if (bone7 == null || bone9 == null) return false;
+        var cubes7 = bone7.getAsJsonArray("cubes");
+        var cubes9 = bone9.getAsJsonArray("cubes");
+        if (cubes7 == null || cubes7.size() < 14 || cubes9 == null || cubes9.size() < 13) return false;
 
         var hoodCubes = new JsonArray();
-        for (int idx : JU87_PILOT_HOOD_CUBES) {
-            hoodCubes.add(cubes.remove(idx));
+        for (int idx : JU87_BONE7_HOOD_CUBES) {
+            hoodCubes.add(cubes7.remove(idx));
+        }
+        for (int idx : JU87_BONE9_HOOD_CUBES) {
+            hoodCubes.add(cubes9.remove(idx));
         }
 
         var pilotHood = new JsonObject();

@@ -41,6 +41,7 @@ final class SeatRoute {
     private long startedAt;
     private float yaw;
     private MountMotion mountMotion;
+    private Vec3 portalAimLocal;
 
     SeatRoute(VehicleEntity vehicle, Player player, int seatIndex) {
         this.vehicle = vehicle;
@@ -176,18 +177,22 @@ final class SeatRoute {
         }
         if (profile == BoardingProfile.JU87_COCKPIT) {
             float tangent = travelYaw(time, entryFacing);
-            float walkBlend = (float) (smooth((time - 0.28) / 0.10) * (1.0 - smooth((time - 0.48) / 0.10)));
-            float midYaw = Mth.rotLerp(walkBlend, entryFacing, tangent);
-            float finalYaw = Mth.rotLerp((float) smooth((time - 0.76) / 0.16), midYaw, seatYaw);
+            float towardPortal = portalAimLocal != null
+                    ? heading(pos, EntryPath.toWorld(vehicle, portalAimLocal), entryFacing) : entryFacing;
+            float walkYaw = Mth.rotLerp((float) smooth((time - 0.25) / 0.08), entryFacing, tangent);
+            float openYaw = Mth.rotLerp((float) smooth((time - 0.46) / 0.10), walkYaw, towardPortal);
+            float finalYaw = Mth.rotLerp((float) smooth((time - 0.74) / 0.16), openYaw, seatYaw);
             return oriented(pos, finalYaw);
         }
         if (profile == BoardingProfile.T90_HATCH || profile == BoardingProfile.HATCH || profile == BoardingProfile.COCKPIT) {
-            // Face the hull during initial climb (0..0.25), turn naturally along the deck/wing walk path (0.26..0.50),
-            // face the hatch/cockpit to open it (0.50..0.72), then turn smoothly into seat heading (0.72..0.88).
+            // Face hull during L-shaped climb (0..0.24), face travel direction along deck/wing walk (0.24..0.52),
+            // turn directly toward the canopy/hatch while opening it (0.52..0.72), then align into seat heading (0.72..0.88).
             float tangent = travelYaw(time, entryFacing);
-            float deckWalk = (float) (smooth((time - 0.25) / 0.08) * (1.0 - smooth((time - 0.48) / 0.10)));
-            float hatchFacing = Mth.rotLerp(deckWalk, entryFacing, tangent);
-            float finalYaw = Mth.rotLerp((float) smooth((time - 0.72) / 0.18), hatchFacing, seatYaw);
+            float towardPortal = portalAimLocal != null
+                    ? heading(pos, EntryPath.toWorld(vehicle, portalAimLocal), entryFacing) : entryFacing;
+            float walkYaw = Mth.rotLerp((float) smooth((time - 0.24) / 0.08), entryFacing, tangent);
+            float openYaw = Mth.rotLerp((float) smooth((time - 0.48) / 0.10), walkYaw, towardPortal);
+            float finalYaw = Mth.rotLerp((float) smooth((time - 0.74) / 0.16), openYaw, seatYaw);
             return oriented(pos, finalYaw);
         }
         if (profile == BoardingProfile.GHAST_CLIMB) {
@@ -226,6 +231,7 @@ final class SeatRoute {
         Vec3 end = EntryPath.standingPoint(player, seatPosition(seat()), approachHeight);
         Vec3 localSeat = EntryPath.toLocal(vehicle, end);
         var portal = EntryPortal.resolve(vehicle, seatIndex, localSeat, start);
+        portalAimLocal = portal != null ? portal.aim() : localSeat;
         return MountMotion.plan(profile, door, hull, start, localSeat, portal);
     }
 

@@ -160,29 +160,31 @@ final class MountMotion {
                     new Contact(1.00, destination, MotionMode.SMOOTH)));
         }
 
-        // Ju 87 dive-bomber: flush against trailing wing edge -> hoist directly onto wing -> walk to cockpit -> drop in
+        // Ju 87 dive-bomber: stand clear behind wing trailing edge -> L-shaped hoist onto wing -> brisk walk -> open canopy -> sit
         if (profile == BoardingProfile.JU87_COCKPIT && portal != null && portal.exteriorStep() != null && portal.foothold() != null) {
             Vec3 trailingStep = portal.exteriorStep();
             Vec3 wingDeck = portal.foothold();
             if (wingDeck.y - start.y > 1.95 || start.y > wingDeck.y + 0.55) return null;
-            Vec3 atWingEdge = new Vec3(trailingStep.x, start.y, trailingStep.z - 0.34);
-            Vec3 onWing = new Vec3(trailingStep.x, Math.max(start.y, trailingStep.y), trailingStep.z + 0.10);
-            Vec3 midWing = onWing.lerp(new Vec3(wingDeck.x, Math.max(start.y, wingDeck.y), wingDeck.z), 0.52);
+            Vec3 atWingEdge = portal.approachHint() != null
+                    ? new Vec3(portal.approachHint().x, start.y, portal.approachHint().z)
+                    : new Vec3(trailingStep.x, start.y, trailingStep.z - 0.56);
+            Vec3 onWing = new Vec3(trailingStep.x, Math.max(start.y, trailingStep.y), trailingStep.z);
+            Vec3 midWing = onWing.lerp(new Vec3(wingDeck.x, Math.max(start.y, wingDeck.y), wingDeck.z), 0.50);
             Vec3 besideCockpit = new Vec3(wingDeck.x, Math.max(start.y, wingDeck.y), wingDeck.z);
             Vec3 overRim = new Vec3(opening.x, Math.max(wingDeck.y + 0.14, opening.y), opening.z);
             return new MountMotion(List.of(
                     new Contact(0.00, start, MotionMode.SMOOTH),
-                    new Contact(0.10, atWingEdge, MotionMode.WALK),
-                    new Contact(0.28, onWing, MotionMode.CLIMB_UP),
-                    new Contact(0.39, midWing, MotionMode.WALK),
+                    new Contact(0.08, atWingEdge, MotionMode.WALK),
+                    new Contact(0.26, onWing, MotionMode.CLIMB_UP),
+                    new Contact(0.38, midWing, MotionMode.WALK),
                     new Contact(0.50, besideCockpit, MotionMode.WALK),
-                    new Contact(0.64, besideCockpit, MotionMode.SMOOTH),
-                    new Contact(0.75, overRim, MotionMode.CLIMB_UP),
+                    new Contact(0.66, besideCockpit, MotionMode.SMOOTH),
+                    new Contact(0.76, overRim, MotionMode.CLIMB_UP),
                     new Contact(0.88, destination, MotionMode.DROP_IN),
                     new Contact(1.00, destination, MotionMode.SMOOTH)));
         }
 
-        // Multi-stage tank / APC hatch climb (boots touch roadwheel/skirt edge -> fender top -> turret roof -> hatch!)
+        // Multi-stage tank / APC hatch climb: stand clear outside ERA skirt -> L-shaped hoist onto fender -> walk to turret hatch!
         if ((profile == BoardingProfile.T90_HATCH || profile == BoardingProfile.HATCH)
                 && portal != null && portal.exteriorStep() != null && portal.foothold() != null) {
             Vec3 fender = portal.exteriorStep();
@@ -195,15 +197,14 @@ final class MountMotion {
             double sideSign = Math.signum(start.x - opening.x);
             if (sideSign == 0) sideSign = Math.signum(fender.x);
 
-            // Stand flush beside track/skirt (NOT 0.90m out in empty air!), step onto wheel/skirt edge, then hoist onto fender!
-            double hugX = sideSign * (Math.abs(fender.x) + 0.60);
-            Vec3 atTrack = new Vec3(hugX, approachY, fender.z);
-            Vec3 skirtFoot = new Vec3(sideSign * (Math.abs(fender.x) + 0.36), Mth.lerp(0.52, approachY, fenderY), fender.z);
+            Vec3 atTrack = portal.approachHint() != null
+                    ? new Vec3(portal.approachHint().x, approachY, portal.approachHint().z)
+                    : new Vec3(sideSign * (Math.abs(fender.x) + 0.90), approachY, fender.z);
             Vec3 onFender = new Vec3(fender.x, fenderY, fender.z);
 
             boolean climbsTurret = deckY - fenderY > 0.35 && Math.abs(deck.z - fender.z) > 0.75;
             Vec3 turretBase = climbsTurret
-                    ? new Vec3(fender.x, fenderY, Mth.lerp(0.74, fender.z, deck.z))
+                    ? new Vec3(fender.x, fenderY, Mth.lerp(0.68, fender.z, deck.z))
                     : onFender.lerp(new Vec3(deck.x, deckY, deck.z), 0.50);
             Vec3 besideHatch = new Vec3(deck.x, deckY, deck.z);
             Vec3 overHatch = new Vec3(opening.x, lipY, opening.z);
@@ -211,22 +212,21 @@ final class MountMotion {
 
             return new MountMotion(List.of(
                     new Contact(0.00, start, MotionMode.SMOOTH),
-                    new Contact(0.08, atTrack, MotionMode.WALK),
-                    new Contact(0.17, skirtFoot, MotionMode.WALK),
-                    new Contact(0.26, onFender, MotionMode.CLIMB_UP),
-                    new Contact(0.40, turretBase, climbsTurret ? MotionMode.WALK : MotionMode.CLIMB_UP),
-                    new Contact(0.52, besideHatch, climbsTurret ? MotionMode.CLIMB_UP : MotionMode.WALK),
-                    new Contact(0.64, besideHatch, MotionMode.SMOOTH),
-                    new Contact(0.74, overHatch, MotionMode.WALK),
-                    new Contact(0.86, dropInside, MotionMode.DROP_IN),
+                    new Contact(0.07, atTrack, MotionMode.WALK),
+                    new Contact(0.25, onFender, MotionMode.CLIMB_UP),
+                    new Contact(0.39, turretBase, climbsTurret ? MotionMode.WALK : MotionMode.CLIMB_UP),
+                    new Contact(0.53, besideHatch, climbsTurret ? MotionMode.CLIMB_UP : MotionMode.WALK),
+                    new Contact(0.66, besideHatch, MotionMode.SMOOTH),
+                    new Contact(0.76, overHatch, MotionMode.WALK),
+                    new Contact(0.87, dropInside, MotionMode.DROP_IN),
                     new Contact(1.00, dropInside, MotionMode.SMOOTH)));
         }
 
-        // Fighter / gunship cockpit climb (A-10A wing root, J-16 LERX, Mi-28 exact wheel gear2#4 -> sponson bone2#66 -> sill)
+        // Fighter / gunship cockpit climb (A-10A wing root, J-16 LERX, Mi-28 exact wheel gear2#4 -> sponson -> sill)
         if (profile == BoardingProfile.COCKPIT && portal != null && portal.exteriorStep() != null && portal.foothold() != null) {
             Vec3 step = portal.exteriorStep();
             Vec3 sillHold = portal.foothold();
-            if (opening.y - start.y > 2.85 || start.y > opening.y + 0.65) return null;
+            if (opening.y - start.y > 3.40 || start.y > opening.y + 0.65) return null;
             double sideSign = Math.signum(start.x - opening.x);
             if (sideSign == 0) sideSign = Math.signum(step.x);
             Vec3 midStep = new Vec3(step.x, Math.max(start.y, step.y), step.z);
@@ -234,45 +234,48 @@ final class MountMotion {
             Vec3 overRim = new Vec3(opening.x, Math.max(upperStep.y, opening.y), opening.z);
 
             if (opening.z - sillHold.z > 1.0) {
-                // Wing / LERX walk fighter (A-10A / J-16): stand RIGHT against wing edge (NOT 2m away!), hoist directly onto wing!
-                double zOff = start.z >= step.z ? 0.42 : -0.42;
-                Vec3 atEdge = Math.abs(start.x - step.x) > 0.35
-                        ? new Vec3(step.x + sideSign * 0.36, start.y, step.z)
-                        : new Vec3(step.x, start.y, step.z + zOff);
-                double shoulderX = Math.abs(sillHold.x) < 1.05
-                        ? Math.copySign(0.84, sillHold.x)
-                        : Math.copySign(1.02, sillHold.x);
-                double deckTopY = Math.max(upperStep.y, overRim.y - 0.16);
+                // Wing / LERX walk fighter (A-10A / J-16): stand CLEAR outside edge -> L-shaped hoist -> brisk walk -> open canopy!
+                Vec3 atEdge = portal.approachHint() != null
+                        ? new Vec3(portal.approachHint().x, start.y, portal.approachHint().z)
+                        : new Vec3(step.x + sideSign * 0.56, start.y, step.z);
+                boolean wideLerx = Math.abs(sillHold.x) >= 1.05;
+                double shoulderX = wideLerx
+                        ? Math.copySign(1.02, sillHold.x)
+                        : Math.copySign(0.74, sillHold.x);
+                double deckTopY = wideLerx
+                        ? Math.max(upperStep.y + 0.14, overRim.y - 0.10)
+                        : Math.max(upperStep.y + 0.12, overRim.y - 0.20);
+                double besideZ = opening.z - 0.30;
                 Vec3 midDeck = new Vec3(
-                        Mth.lerp(0.55, upperStep.x, shoulderX),
-                        Mth.lerp(0.55, upperStep.y, deckTopY),
-                        Mth.lerp(0.55, upperStep.z, opening.z - 0.22));
-                Vec3 besideCockpit = new Vec3(shoulderX, deckTopY, opening.z - 0.22);
+                        Mth.lerp(0.52, upperStep.x, shoulderX),
+                        Mth.lerp(0.52, upperStep.y, deckTopY),
+                        Mth.lerp(0.52, upperStep.z, besideZ));
+                Vec3 besideCockpit = new Vec3(shoulderX, deckTopY, besideZ);
                 return new MountMotion(List.of(
                         new Contact(0.00, start, MotionMode.SMOOTH),
-                        new Contact(0.08, atEdge, MotionMode.WALK),
+                        new Contact(0.06, atEdge, MotionMode.WALK),
                         new Contact(0.24, midStep, MotionMode.CLIMB_UP),
                         new Contact(0.34, upperStep, midStep.y + 0.30 < upperStep.y ? MotionMode.CLIMB_UP : MotionMode.WALK),
-                        new Contact(0.43, midDeck, MotionMode.WALK),
-                        new Contact(0.52, besideCockpit, MotionMode.WALK),
-                        new Contact(0.64, besideCockpit, MotionMode.SMOOTH),
-                        new Contact(0.75, overRim, MotionMode.CLIMB_UP),
-                        new Contact(0.87, destination, MotionMode.DROP_IN),
+                        new Contact(0.44, midDeck, MotionMode.WALK),
+                        new Contact(0.54, besideCockpit, MotionMode.WALK),
+                        new Contact(0.68, besideCockpit, MotionMode.SMOOTH),
+                        new Contact(0.77, overRim, MotionMode.CLIMB_UP),
+                        new Contact(0.88, destination, MotionMode.DROP_IN),
                         new Contact(1.00, destination, MotionMode.SMOOTH)));
             }
 
-            // Mi-28 side cockpit door: exact wheel tire gear2#4 (-0.98, 0.54, 1.32) -> sponson bone2#66 (-0.94, 1.02, 1.34)
-            // -> pull door open (0.40..0.58) -> step onto cockpit sill (-0.74, 1.48) -> sit!
-            Vec3 atWheel = new Vec3(step.x + sideSign * 0.36, start.y, step.z);
+            // Mi-28 side cockpit door: exact wheel tire gear2#4 -> sponson -> pull door open (0.54..0.68) -> step over sill -> sit!
+            Vec3 atWheel = new Vec3(step.x + sideSign * 0.42, start.y, step.z);
             Vec3 sillClimb = new Vec3(opening.x, Math.max(upperStep.y, opening.y), opening.z);
             return new MountMotion(List.of(
                     new Contact(0.00, start, MotionMode.SMOOTH),
                     new Contact(0.08, atWheel, MotionMode.WALK),
-                    new Contact(0.22, midStep, MotionMode.WALK),
-                    new Contact(0.40, upperStep, MotionMode.WALK),
-                    new Contact(0.58, upperStep, MotionMode.SMOOTH),
-                    new Contact(0.72, sillClimb, MotionMode.WALK),
-                    new Contact(0.84, destination, MotionMode.SMOOTH),
+                    new Contact(0.24, midStep, MotionMode.WALK),
+                    new Contact(0.44, upperStep, MotionMode.WALK),
+                    new Contact(0.54, upperStep, MotionMode.SMOOTH),
+                    new Contact(0.68, upperStep, MotionMode.SMOOTH),
+                    new Contact(0.78, sillClimb, MotionMode.WALK),
+                    new Contact(0.88, destination, MotionMode.SMOOTH),
                     new Contact(1.00, destination, MotionMode.SMOOTH)));
         }
 
@@ -450,23 +453,28 @@ final class MountMotion {
         // 2. Fighter / gunship / dive-bomber cockpits (release=0.16)
         if ((profile == BoardingProfile.COCKPIT || profile == BoardingProfile.JU87_COCKPIT)
                 && portal != null && portal.exteriorStep() != null && portal.foothold() != null) {
-            if (opening.y - landing.y > 2.85 || landing.y > opening.y + 0.65) return null;
+            if (opening.y - landing.y > 3.40 || landing.y > opening.y + 0.65) return null;
             Vec3 step = portal.exteriorStep();
             Vec3 sillHold = portal.foothold();
             Vec3 rim = new Vec3(opening.x, Math.max(sillHold.y, opening.y), opening.z);
 
             if (profile == BoardingProfile.JU87_COCKPIT || opening.z - sillHold.z > 1.0) {
                 // Wing / LERX fighters (A-10A, J-16, Ju-87): open canopy -> climb out -> face canopy & close -> walk wing -> drop off!
+                boolean wideLerx = profile != BoardingProfile.JU87_COCKPIT && Math.abs(sillHold.x) >= 1.05;
                 double shoulderX = profile == BoardingProfile.JU87_COCKPIT
                         ? sillHold.x
-                        : (Math.abs(sillHold.x) < 1.05 ? Math.copySign(0.84, sillHold.x) : Math.copySign(1.02, sillHold.x));
-                double deckTopY = Math.max(sillHold.y, rim.y - 0.16);
+                        : (wideLerx ? Math.copySign(1.02, sillHold.x) : Math.copySign(0.74, sillHold.x));
+                double deckTopY = profile == BoardingProfile.JU87_COCKPIT
+                        ? Math.max(landing.y, sillHold.y)
+                        : (wideLerx ? Math.max(sillHold.y + 0.14, rim.y - 0.10) : Math.max(sillHold.y + 0.12, rim.y - 0.20));
                 Vec3 besideCockpit = new Vec3(
                         shoulderX,
                         deckTopY,
-                        profile == BoardingProfile.JU87_COCKPIT ? sillHold.z : opening.z - 0.22);
+                        profile == BoardingProfile.JU87_COCKPIT ? sillHold.z : opening.z - 0.30);
                 Vec3 midDeck = new Vec3(sillHold.x, Math.max(landing.y, sillHold.y), sillHold.z);
-                Vec3 wingEdge = new Vec3(step.x, Math.max(landing.y, step.y), step.z);
+                Vec3 wingEdge = wideLerx
+                        ? new Vec3(Math.copySign(Math.abs(step.x) + 0.26, step.x), Math.max(landing.y, step.y), step.z)
+                        : new Vec3(step.x, Math.max(landing.y, step.y), step.z);
                 return new MountMotion(List.of(
                         new Contact(0.00, origin, MotionMode.SMOOTH),
                         new Contact(releaseFrac, origin, MotionMode.SMOOTH),
@@ -474,8 +482,8 @@ final class MountMotion {
                         new Contact(0.38, besideCockpit, MotionMode.WALK),
                         new Contact(0.52, besideCockpit, MotionMode.SMOOTH),   // facing canopy, physically closes it!
                         new Contact(0.64, midDeck, MotionMode.WALK),
-                        new Contact(0.75, wingEdge, MotionMode.WALK),
-                        new Contact(0.89, landing, MotionMode.JUMP_DOWN),      // crisp drop off wing trailing edge
+                        new Contact(0.76, wingEdge, MotionMode.WALK),
+                        new Contact(0.89, landing, MotionMode.JUMP_DOWN),      // clears wing/LERX lip first, then drops!
                         new Contact(1.00, landing, MotionMode.SMOOTH)));
             }
 
@@ -690,11 +698,11 @@ final class MountMotion {
                 yield a.lerp(b, Mth.clamp(s, 0, 1));
             }
             case CLIMB_UP -> {
-                // Hugging surface climb: rises steadily while pulling smoothly inward along the real edge,
-                // never levitating straight up in empty air far outside the hull!
+                // Pure L-shaped exterior hoist: rise vertically clear outside the wing/LERX/ERA edge FIRST,
+                // then step horizontally onto the top deck once boots clear the surface!
                 if (b.y > a.y + 0.35) {
-                    double uy = smooth(Math.min(1.0, u / 0.78));
-                    double uxz = smooth(Math.max(0.0, (u - 0.16) / 0.84));
+                    double uy = smooth(Math.min(1.0, u / 0.62));
+                    double uxz = smooth(Math.max(0.0, (u - 0.52) / 0.48));
                     yield new Vec3(Mth.lerp(uxz, a.x, b.x), Mth.lerp(uy, a.y, b.y), Mth.lerp(uxz, a.z, b.z));
                 }
                 yield a.lerp(b, smooth(u));
@@ -706,11 +714,12 @@ final class MountMotion {
                 yield new Vec3(Mth.lerp(uxz, a.x, b.x), Mth.lerp(uy, a.y, b.y), Mth.lerp(uxz, a.z, b.z));
             }
             case JUMP_DOWN -> {
-                // Crisp gravity step-off for genuine elevated drops (dy > 0.80) with ZERO upward hopLift!
+                // Step cleanly outward clear of the wing/LERX/fender lip FIRST, then drop smoothly under gravity!
                 double dy = a.y - b.y;
                 if (dy > 0.80) {
-                    double y = Mth.lerp(u * u, a.y, b.y);
-                    double uxz = smooth(Math.min(1.0, u / 0.82));
+                    double uxz = smooth(Math.min(1.0, u / 0.55));
+                    double gu = Math.max(0.0, (u - 0.14) / 0.86);
+                    double y = Mth.lerp(Math.pow(gu, 1.85), a.y, b.y);
                     yield new Vec3(Mth.lerp(uxz, a.x, b.x), y, Mth.lerp(uxz, a.z, b.z));
                 }
                 yield a.lerp(b, smooth(u));

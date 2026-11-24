@@ -173,102 +173,119 @@ final class VehicleRigCatalog {
                     new Vec3(0.0, 0.88, -2.30),
                     new Vec3(0.0, 1.35, -3.38));
             case "t_90a" -> {
-                Vec3 rim = turretPoint(vehicle, 0.72, 0.94, -0.49);
+                // Seat 1 is right-side (-X) commander cupola (bone19); seats 0/2 use left-side (+X) gunner hatch (canggai).
+                // Both rim and besideHatch use turretPoint(...) so they always track turret yaw!
+                boolean commander = seat == 1;
+                Vec3 rim = commander
+                        ? turretPoint(vehicle, -0.71, 0.74, -0.29)
+                        : turretPoint(vehicle, 0.72, 0.64, -0.49);
+                Vec3 besideHatch = commander
+                        ? turretPoint(vehicle, -1.36, 0.58, -0.44)
+                        : turretPoint(vehicle, 1.38, 0.56, -0.60);
                 double side = rim.x >= 0 ? 1 : -1;
-                // .geo.json verified: outer ERA skirt bone4 |X|=2.28, fender sideL#46 |X|=1.32..2.03 Y_top=1.65, turret Y=2.40
+                // .geo.json raycast verified: outer ERA skirt |X|=2.28 -> stand 0.48m clear outside at |X|=2.76!
+                // Front fender top Y=1.72 at |X|=1.86, Z=2.15; flat turret rear-left deck Y=2.36 clear of bone20 optics!
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 2.48, start.y, 2.15),
-                        new Vec3(side * 1.80, Math.max(start.y, 1.65), 2.15),
-                        new Vec3(side * 1.28, Math.max(start.y, 2.40), -0.05),
-                        new Vec3(rim.x, 1.50, rim.z),
+                        new Vec3(side * 2.86, start.y, 2.15),
+                        new Vec3(side * 1.86, Math.max(start.y, 1.72), 2.15),
+                        new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
+                        new Vec3(rim.x, 1.48, rim.z),
                         rim);
             }
             case "prism_tank" -> new EntryPortal(
-                    // .geo.json verified: outer blue fender max|X|=2.65, topY=1.80, main deck topY=2.24, cangmen=(-0.594, 2.26, 3.062)
+                    // .geo.json verified: outer blue fender max|X|=2.65 -> stand 0.47m clear at X=-3.12!
                     new Vec3(-0.594, 2.26, 3.062),
-                    new Vec3(-2.82, start.y, 3.062),
+                    new Vec3(-3.12, start.y, 3.062),
                     new Vec3(-2.14, Math.max(start.y, 1.80), 3.062),
                     new Vec3(-1.42, Math.max(start.y, 2.24), 3.062),
                     new Vec3(-0.594, 1.32, 3.062),
                     new Vec3(-0.594, 2.26, 3.062));
             case "plz_05" -> {
                 if (seat == 0) {
-                    // .geo.json verified: sidearmorL max|X|=2.22, topY=1.42, main deck topY=1.96
+                    // .geo.json verified: sidearmorL max|X|=2.22 -> stand 0.48m clear at X=2.70!
                     yield new EntryPortal(
                             new Vec3(1.00, 1.98, 2.68),
-                            new Vec3(2.44, start.y, 2.68),
-                            new Vec3(1.94, Math.max(start.y, 1.42), 2.68),
+                            new Vec3(2.70, start.y, 2.68),
+                            new Vec3(1.94, Math.max(start.y, 1.44), 2.68),
                             new Vec3(1.52, Math.max(start.y, 1.96), 2.68),
                             new Vec3(1.00, 1.18, 2.68),
                             new Vec3(1.00, 1.98, 2.68));
                 }
-                Vec3 rim = turretPoint(vehicle, seat == 3 ? -1.10 : 1.10, 1.68, seat == 1 ? 0.30 : -1.35);
+                double tx = seat == 3 ? -1.10 : 1.10;
+                double tz = seat == 1 ? 0.30 : -1.35;
+                Vec3 rim = turretPoint(vehicle, tx, 1.68, tz);
+                Vec3 besideHatch = turretPoint(vehicle, Math.copySign(1.56, tx), 1.32, tz);
                 double side = rim.x >= 0 ? 1 : -1;
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 2.44, start.y, 2.68),
+                        new Vec3(side * 2.70, start.y, 2.68),
                         new Vec3(side * 1.94, Math.max(start.y, 1.96), 2.68),
-                        new Vec3(side * 1.56, Math.max(start.y, 3.22), rim.z),
+                        new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
                         seat == 1 ? new Vec3(rim.x, 2.25, rim.z) : null,
                         rim);
             }
             case "bmp_2" -> {
                 Vec3 rim = turretPoint(vehicle, 0.45, 0.79, -0.35);
+                Vec3 besideHatch = turretPoint(vehicle, 1.02, 0.46, -0.35);
                 double side = rim.x >= 0 ? 1 : -1;
-                // .geo.json verified: outer max|X|=2.33, fender topY=1.78, main turret roof ~2.46
+                // .geo.json verified: outer max|X|=2.33 -> stand 0.47m clear at |X|=2.80!
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 2.52, start.y, 1.95),
+                        new Vec3(side * 2.80, start.y, 1.95),
                         new Vec3(side * 1.82, Math.max(start.y, 1.78), 1.95),
-                        new Vec3(side * 0.96, Math.max(start.y, 2.46), -0.25),
+                        new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
                         new Vec3(rim.x, 1.68, rim.z),
                         rim);
             }
             case "lav_150" -> {
                 Vec3 rim = turretPoint(vehicle, 0.38, 0.70, 0.0);
+                Vec3 besideHatch = turretPoint(vehicle, 0.96, 0.08, 0.40);
                 double side = rim.x >= 0 ? 1 : -1;
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 1.94, start.y, 1.40),
+                        new Vec3(side * 2.22, start.y, 1.40),
                         new Vec3(side * 1.46, Math.max(start.y, 1.24), 1.40),
-                        new Vec3(side * 0.96, Math.max(start.y, 2.44), 0.70),
+                        new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
                         new Vec3(rim.x, 1.80, rim.z),
                         rim);
             }
             case "m_1a_2" -> {
-                // .geo.json verified: outer max|X|=2.32, front fender topY=1.70, center turret roof topY=2.94
+                // .geo.json verified: outer max|X|=2.32 -> stand 0.48m clear at |X|=2.80!
                 Vec3 rim = turretPoint(vehicle, 0.61, 1.09, -0.81);
+                Vec3 besideHatch = turretPoint(vehicle, 1.24, 1.05, -0.45);
                 double side = rim.x >= 0 ? 1 : -1;
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 2.52, start.y, 2.25),
+                        new Vec3(side * 2.80, start.y, 2.25),
                         new Vec3(side * 1.88, Math.max(start.y, 1.70), 2.25),
-                        new Vec3(side * 1.24, Math.max(start.y, 2.94), -0.42),
+                        new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
                         new Vec3(rim.x, 1.60, rim.z),
                         rim);
             }
             case "ztz_99a" -> {
-                // .geo.json verified: outer max|X|=2.29, wheel_armor_right topY=1.68, turret roof Y=3.00
+                // .geo.json verified: outer max|X|=2.29 -> stand 0.47m clear at |X|=2.76!
                 Vec3 rim = turretPoint(vehicle, -0.78, 1.16, 0.16);
+                Vec3 besideHatch = turretPoint(vehicle, -1.32, 1.12, 0.45);
                 double side = rim.x >= 0 ? 1 : -1;
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 2.50, start.y, 2.35),
+                        new Vec3(side * 2.76, start.y, 2.35),
                         new Vec3(side * 1.86, Math.max(start.y, 1.68), 2.35),
-                        new Vec3(side * 1.32, Math.max(start.y, 3.00), 0.45),
+                        new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
                         new Vec3(rim.x, 1.72, rim.z),
                         rim);
             }
             case "yx_100" -> {
-                // .geo.json verified: outer max|X|=2.49, fender topY=1.88, turret roof ~2.88
+                // .geo.json verified: outer max|X|=2.49 -> stand 0.47m clear at |X|=2.96!
                 Vec3 rim = turretPoint(vehicle, 0.85, 0.48, 0.24);
+                Vec3 besideHatch = turretPoint(vehicle, 1.48, 0.26, 0.45);
                 double side = rim.x >= 0 ? 1 : -1;
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 2.70, start.y, 2.40),
+                        new Vec3(side * 2.96, start.y, 2.40),
                         new Vec3(side * 2.02, Math.max(start.y, 1.88), 2.40),
-                        new Vec3(side * 1.48, Math.max(start.y, 2.88), 0.45),
+                        new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
                         new Vec3(rim.x, 2.05, rim.z),
                         rim);
             }
@@ -281,44 +298,48 @@ final class VehicleRigCatalog {
         return switch (model) {
             case "a_10a" -> {
                 double side = start.x < 0 ? -1 : 1;
-                // .geo.json verified: center wing zhong#4 trailing edge Z=-1.40 (Y_top=1.74), leading edge zhong#0 Z=+0.74 (Y_top=1.99),
-                // fuselage shoulder |X|=0.74..0.90 Y=2.24. Stand right against wing edge (0.22m away), ZERO air levitation!
-                if (start.z < 0.0) {
+                // .geo.json raycast verified: wing trailing edge Z=-1.40 (Y=1.79), wing peak Z=+0.20 (Y=2.15),
+                // wing leading edge Z=+0.74 (Y=1.83), fuselage chine X=0.74 Z=+1.2..+2.4 (Y=1.92..2.26).
+                // Stand >=0.54m CLEAR outside trailing/leading edge so L-shaped hoist & drop NEVER clip the wing!
+                if (start.z < -0.35) {
                     yield new EntryPortal(
                             new Vec3(side * 0.24, 2.46, 2.74),
-                            new Vec3(side * 1.36, start.y, -1.62),
-                            new Vec3(side * 1.34, Math.max(start.y, 1.74), -0.98),
-                            new Vec3(side * 0.88, Math.max(start.y, 2.18), 0.48),
+                            new Vec3(side * 1.88, start.y, -1.94),
+                            new Vec3(side * 1.58, Math.max(start.y, 1.84), -1.04),
+                            new Vec3(side * 0.82, Math.max(start.y, 2.16), 0.34),
                             null,
                             new Vec3(0.0, 2.20, 2.74));
                 }
                 yield new EntryPortal(
                         new Vec3(side * 0.24, 2.46, 2.74),
-                        new Vec3(side * 1.32, start.y, 1.02),
-                        new Vec3(side * 1.28, Math.max(start.y, 1.98), 0.42),
-                        new Vec3(side * 0.86, Math.max(start.y, 2.24), 1.10),
+                        new Vec3(side * 1.46, start.y, 1.34),
+                        new Vec3(side * 1.18, Math.max(start.y, 1.86), 0.62),
+                        new Vec3(side * 0.78, Math.max(start.y, 2.04), 1.38),
                         null,
                         new Vec3(0.0, 2.20, 2.74));
             }
             case "j_16" -> {
                 double side = start.x < 0 ? -1 : 1;
                 double z = seat == 0 ? 5.62 : 4.00;
-                // .geo.json verified: LERX body#102/#100 deck Y=2.30..2.67 at Z=2.0..4.0, |X|<=1.75.
+                // .geo.json raycast verified: LERX outer edge |X|=2.07 at Z=2.60 (Y=2.53),
+                // rises smoothly along LERX ramp to Y=3.02 cockpit shoulder at |X|=1.02, Z=4.0..5.4!
+                // Stand 0.49m CLEAR outside LERX edge (|X|=2.56) so hoist & drop NEVER clip underneath the LERX!
                 yield new EntryPortal(
-                        new Vec3(side * 0.24, 2.74, z),
-                        new Vec3(side * 2.18, start.y, 2.55),
-                        new Vec3(side * 1.72, Math.max(start.y, 2.38), 2.55),
-                        new Vec3(side * 1.28, Math.max(start.y, 2.56), Math.min(z - 1.0, 3.95)),
+                        new Vec3(side * 0.24, 3.12, z),
+                        new Vec3(side * 2.56, start.y, 2.60),
+                        new Vec3(side * 1.72, Math.max(start.y, 2.54), 2.60),
+                        new Vec3(side * 1.32, Math.max(start.y, 2.86), Math.min(z - 1.15, 3.85)),
                         null,
-                        new Vec3(0.0, 2.44, z));
+                        new Vec3(0.0, 2.88, z));
             }
             case "ju_87" -> {
                 double side = start.x < seatPosition.x ? -1 : 1;
+                // .geo.json raycast verified: wing trailing edge Z=-0.60 -> stand 0.56m clear behind at Z=-1.16!
                 yield new EntryPortal(
-                        modelPoint(vehicle, side * 0.22, 2.12, seatPosition.z),
-                        new Vec3(side * 1.06, start.y, -0.82),
-                        modelPoint(vehicle, side * 0.96, 1.54, -0.35),
-                        modelPoint(vehicle, side * 0.82, 1.58, Math.min(1.00, seatPosition.z - 0.10)),
+                        modelPoint(vehicle, side * 0.22, 2.10, seatPosition.z),
+                        new Vec3(side * 1.22, start.y, -1.16),
+                        modelPoint(vehicle, side * 0.96, 1.54, -0.36),
+                        modelPoint(vehicle, side * 0.82, 1.58, Math.min(1.12, seatPosition.z - 0.08)),
                         null,
                         modelPoint(vehicle, 0.0, 1.88, seatPosition.z));
             }
