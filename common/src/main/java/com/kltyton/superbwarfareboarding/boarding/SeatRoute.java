@@ -285,7 +285,7 @@ final class SeatRoute {
 
     boolean mountUnblocked() {
         if (mountMotion == null || !available()) return false;
-        return EntryPath.clear(vehicle, player, player.position(), mountPosition(mountProgress()));
+        return EntryPath.clearBlocksOnly(player, player.position(), mountPosition(mountProgress()));
     }
 
     private double mountProgress() {

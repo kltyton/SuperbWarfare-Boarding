@@ -234,6 +234,11 @@ public final class EntryPath {
         return clear(player, from, to, otherCarriers(vehicle, box.inflate(0.7)));
     }
 
+    /** Checks solid world blocks only (ignoring adjacent parked vehicles during an active exterior climb). */
+    static boolean clearBlocksOnly(Player player, Vec3 from, Vec3 to) {
+        return clear(player, from, to, List.of());
+    }
+
     static boolean clearWalk(VehicleEntity vehicle, Player player, Vec3 from, Vec3 to) {
         var box = player.getBoundingBox().move(from.subtract(player.position())).expandTowards(to.subtract(from));
         return clearWalk(vehicle, player, from, to, otherCarriers(vehicle, box.inflate(0.7)),

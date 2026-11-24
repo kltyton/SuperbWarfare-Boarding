@@ -236,18 +236,19 @@ final class MountMotion {
                     new Contact(1.00, destination, MotionMode.SMOOTH)));
         }
 
-        // Multi-stage tank / APC hatch climb: stand clear outside ERA skirt -> vertical-first hoist onto fender ->
-        // stay 100% outside live-rotated turret cheeks -> vertical-first hoist onto turret roof -> walk to hatch!
+        // Multi-stage tank / APC hatch climb:
+        // Steady human-speed segments: climb fender -> walk to clear turret base -> climb straight UP onto turret roof edge ->
+        // walk smoothly across flat turret roof to besideHatch (ZERO pausing, ZERO 14m/s diagonal teleport!)
         if ((profile == BoardingProfile.T90_HATCH || profile == BoardingProfile.HATCH)
                 && portal != null && portal.exteriorStep() != null && portal.foothold() != null) {
             Vec3 fender = portal.exteriorStep();
             Vec3 deck = portal.foothold();
-            if (opening.y - start.y > 3.60 || start.y > opening.y + 0.70) return null;
+            if (opening.y - start.y > 4.40 || start.y > opening.y + 0.70) return null;
             var allSolids = vehicle != null ? SurfaceClearance.allSolidsLocal(vehicle) : List.<AABB>of();
             var turretSolids = vehicle != null ? SurfaceClearance.turretSolidsLocal(vehicle) : List.<AABB>of();
             double approachY = start.y;
-            double fenderY = Math.max(approachY, SurfaceClearance.supportTopY(allSolids, fender.x, fender.z, fender.y, SurfaceClearance.FOOT_RADIUS, 0.45));
-            double deckY = Math.max(fenderY, SurfaceClearance.supportTopY(allSolids, deck.x, deck.z, deck.y, SurfaceClearance.FOOT_RADIUS, 0.45));
+            double fenderY = Math.max(approachY, SurfaceClearance.supportTopY(allSolids, fender.x, fender.z, fender.y, SurfaceClearance.FOOT_RADIUS, 0.65));
+            double deckY = Math.max(fenderY, SurfaceClearance.supportTopY(allSolids, deck.x, deck.z, deck.y, SurfaceClearance.FOOT_RADIUS, 0.65));
             double lipY = Math.max(deckY, opening.y);
             double sideSign = Math.signum(start.x - opening.x);
             if (sideSign == 0) sideSign = Math.signum(fender.x);
@@ -255,39 +256,70 @@ final class MountMotion {
             Vec3 rawAtTrack = portal.approachHint() != null
                     ? new Vec3(portal.approachHint().x, approachY, portal.approachHint().z)
                     : new Vec3(sideSign * (Math.abs(fender.x) + 0.90), approachY, fender.z);
-            Vec3 atTrack = SurfaceClearance.pushClearOutward(allSolids, rawAtTrack, fender, SurfaceClearance.BODY_RADIUS);
+            Vec3 atTrack = clampShift(start, SurfaceClearance.pushClearOutward(allSolids, rawAtTrack, fender, SurfaceClearance.BODY_RADIUS), 0.75);
             Vec3 onFender = new Vec3(fender.x, fenderY, fender.z);
             Vec3 besideHatch = new Vec3(deck.x, deckY, deck.z);
 
             boolean climbsTurret = deckY - fenderY > 0.35 && Math.abs(deck.z - fender.z) > 0.75;
-            Vec3 turretBase;
             if (climbsTurret) {
                 Vec3 rawBase = SurfaceClearance.findTurretClimbBase(turretSolids, onFender, besideHatch);
-                double baseY = Math.max(fenderY, SurfaceClearance.supportTopY(allSolids, rawBase.x, rawBase.z, fenderY, SurfaceClearance.FOOT_RADIUS, 0.35));
-                turretBase = new Vec3(rawBase.x, baseY, rawBase.z);
-            } else {
-                Vec3 mid = onFender.lerp(besideHatch, 0.50);
-                double midY = SurfaceClearance.supportTopY(allSolids, mid.x, mid.z, mid.y, SurfaceClearance.FOOT_RADIUS, 0.45);
-                turretBase = new Vec3(mid.x, midY, mid.z);
-            }
-            // If turret roof blocks the straight line from turretBase to besideHatch, step up onto turret roof edge first
-            double blockTop = climbsTurret
-                    ? SurfaceClearance.maxBlockingTopY(turretSolids, turretBase, besideHatch, SurfaceClearance.BODY_RADIUS)
-                    : Double.NEGATIVE_INFINITY;
-            double roofY = Double.isFinite(blockTop) ? Math.max(deckY, blockTop + 0.02) : deckY;
-            Vec3 besideHatchSafe = new Vec3(besideHatch.x, roofY, besideHatch.z);
-            Vec3 overHatch = new Vec3(opening.x, Math.max(roofY, lipY), opening.z);
-            Vec3 dropInside = new Vec3(destination.x, destination.y, destination.z);
+                double baseY = Math.max(fenderY, SurfaceClearance.supportTopY(allSolids, rawBase.x, rawBase.z, fenderY, SurfaceClearance.FOOT_RADIUS, 0.45));
+                Vec3 turretBase = new Vec3(rawBase.x, baseY, rawBase.z);
+                // Short, crisp climb onto the turret roof edge right next to turretBase (<= 0.95m horizontal!),
+                // then steady natural WALK across the flat turret roof to besideHatch!
+                Vec3 toHatch = new Vec3(besideHatch.x - turretBase.x, 0, besideHatch.z - turretBase.z);
+                double horizDist = toHatch.length();
+                Vec3 roofEdge = horizDist > 0.95
+                        ? new Vec3(turretBase.x + toHatch.x / horizDist * 0.90, deckY, turretBase.z + toHatch.z / horizDist * 0.90)
+                        : besideHatch;
+                double roofEdgeY = Math.max(deckY, SurfaceClearance.supportTopY(allSolids, roofEdge.x, roofEdge.z, deckY, SurfaceClearance.FOOT_RADIUS, 0.45));
+                roofEdge = new Vec3(roofEdge.x, roofEdgeY, roofEdge.z);
+                double blockTop = SurfaceClearance.maxBlockingTopY(turretSolids, roofEdge, besideHatch, SurfaceClearance.FOOT_RADIUS);
+                double roofY = Double.isFinite(blockTop) ? Math.max(deckY, blockTop + 0.02) : deckY;
+                Vec3 besideHatchSafe = new Vec3(besideHatch.x, roofY, besideHatch.z);
+                Vec3 overHatch = new Vec3(opening.x, Math.max(roofY, lipY), opening.z);
+                Vec3 dropInside = new Vec3(destination.x, destination.y, destination.z);
 
+                boolean hasFenderWalk = turretBase.distanceTo(onFender) > 0.30;
+                if (hasFenderWalk) {
+                    return new MountMotion(List.of(
+                            new Contact(0.00, start, MotionMode.SMOOTH),
+                            new Contact(0.06, atTrack, MotionMode.WALK),
+                            new Contact(0.28, onFender, MotionMode.CLIMB_UP),
+                            new Contact(0.37, turretBase, MotionMode.WALK),
+                            new Contact(0.52, roofEdge, MotionMode.CLIMB_UP),
+                            new Contact(0.63, besideHatchSafe, MotionMode.WALK),
+                            new Contact(0.70, besideHatchSafe, MotionMode.SMOOTH),
+                            new Contact(0.79, overHatch, MotionMode.WALK),
+                            new Contact(0.90, dropInside, MotionMode.DROP_IN),
+                            new Contact(1.00, dropInside, MotionMode.SMOOTH)));
+                }
+                return new MountMotion(List.of(
+                        new Contact(0.00, start, MotionMode.SMOOTH),
+                        new Contact(0.06, atTrack, MotionMode.WALK),
+                        new Contact(0.29, onFender, MotionMode.CLIMB_UP),
+                        new Contact(0.47, roofEdge, MotionMode.CLIMB_UP),
+                        new Contact(0.62, besideHatchSafe, MotionMode.WALK),
+                        new Contact(0.70, besideHatchSafe, MotionMode.SMOOTH),
+                        new Contact(0.79, overHatch, MotionMode.WALK),
+                        new Contact(0.90, dropInside, MotionMode.DROP_IN),
+                        new Contact(1.00, dropInside, MotionMode.SMOOTH)));
+            }
+
+            Vec3 mid = onFender.lerp(besideHatch, 0.50);
+            double midY = SurfaceClearance.supportTopY(allSolids, mid.x, mid.z, mid.y, SurfaceClearance.FOOT_RADIUS, 0.55);
+            Vec3 midDeck = new Vec3(mid.x, midY, mid.z);
+            Vec3 overHatch = new Vec3(opening.x, lipY, opening.z);
+            Vec3 dropInside = new Vec3(destination.x, destination.y, destination.z);
             return new MountMotion(List.of(
                     new Contact(0.00, start, MotionMode.SMOOTH),
-                    new Contact(0.07, atTrack, MotionMode.WALK),
-                    new Contact(0.25, onFender, MotionMode.CLIMB_UP),
-                    new Contact(0.38, turretBase, climbsTurret ? MotionMode.WALK : MotionMode.CLIMB_UP),
-                    new Contact(0.54, besideHatchSafe, climbsTurret ? MotionMode.CLIMB_UP : MotionMode.WALK),
-                    new Contact(0.66, besideHatchSafe, MotionMode.SMOOTH),
+                    new Contact(0.08, atTrack, MotionMode.WALK),
+                    new Contact(0.26, onFender, MotionMode.CLIMB_UP),
+                    new Contact(0.42, midDeck, MotionMode.WALK),
+                    new Contact(0.56, besideHatch, MotionMode.WALK),
+                    new Contact(0.67, besideHatch, MotionMode.SMOOTH),
                     new Contact(0.76, overHatch, MotionMode.WALK),
-                    new Contact(0.87, dropInside, MotionMode.DROP_IN),
+                    new Contact(0.88, dropInside, MotionMode.DROP_IN),
                     new Contact(1.00, dropInside, MotionMode.SMOOTH)));
         }
 
@@ -516,32 +548,38 @@ final class MountMotion {
         // 0.38..0.52 close hatch -> 0.60..0.76 clear turret cheek onto fender outer edge -> 0.76..0.89 horizontal-first drop -> 1.00 cushion!
         if ((profile == BoardingProfile.T90_HATCH || profile == BoardingProfile.HATCH)
                 && portal != null && portal.exteriorStep() != null && portal.foothold() != null) {
-            if (opening.y - landing.y > 3.60 || landing.y > opening.y + 0.70) return null;
+            if (opening.y - landing.y > 4.40 || landing.y > opening.y + 0.70) return null;
             var allSolids = vehicle != null ? SurfaceClearance.allSolidsLocal(vehicle) : List.<AABB>of();
             var turretSolids = vehicle != null ? SurfaceClearance.turretSolidsLocal(vehicle) : List.<AABB>of();
             Vec3 deck = portal.foothold();
             Vec3 fender = portal.exteriorStep();
-            double deckY = Math.max(landing.y, SurfaceClearance.supportTopY(allSolids, deck.x, deck.z, deck.y, SurfaceClearance.FOOT_RADIUS, 0.45));
-            double fenderY = Math.max(landing.y, SurfaceClearance.supportTopY(allSolids, fender.x, fender.z, fender.y, SurfaceClearance.FOOT_RADIUS, 0.45));
+            double deckY = Math.max(landing.y, SurfaceClearance.supportTopY(allSolids, deck.x, deck.z, deck.y, SurfaceClearance.FOOT_RADIUS, 0.65));
+            double fenderY = Math.max(landing.y, SurfaceClearance.supportTopY(allSolids, fender.x, fender.z, fender.y, SurfaceClearance.FOOT_RADIUS, 0.65));
             Vec3 rim = new Vec3(opening.x, Math.max(deckY, opening.y), opening.z);
             Vec3 besideHatch = new Vec3(deck.x, deckY, deck.z);
             double fSign = Math.signum(fender.x) != 0 ? Math.signum(fender.x) : sideSign;
             Vec3 fenderOuter = new Vec3(fSign * (Math.abs(fender.x) + 0.24), fenderY, fender.z);
-            Vec3 safeLanding = SurfaceClearance.pushClearOutward(allSolids, landing, fender, SurfaceClearance.BODY_RADIUS);
+            Vec3 safeLanding = clampShift(landing, SurfaceClearance.pushClearOutward(allSolids, landing, fender, SurfaceClearance.BODY_RADIUS), 0.60);
             boolean hasTwoTiers = deckY - fenderY > 0.35;
             if (hasTwoTiers) {
                 Vec3 clearFender = SurfaceClearance.findTurretClimbBase(turretSolids, new Vec3(fender.x, fenderY, fender.z), besideHatch);
-                double clearFenderY = Math.max(fenderY, SurfaceClearance.supportTopY(allSolids, clearFender.x, clearFender.z, fenderY, SurfaceClearance.FOOT_RADIUS, 0.35));
+                double clearFenderY = Math.max(fenderY, SurfaceClearance.supportTopY(allSolids, clearFender.x, clearFender.z, fenderY, SurfaceClearance.FOOT_RADIUS, 0.45));
                 Vec3 sideFender = new Vec3(clearFender.x, clearFenderY, clearFender.z);
+                Vec3 toFender = new Vec3(sideFender.x - besideHatch.x, 0, sideFender.z - besideHatch.z);
+                double hdist = toFender.length();
+                Vec3 roofEdge = hdist > 0.95
+                        ? new Vec3(sideFender.x - toFender.x / hdist * 0.90, deckY, sideFender.z - toFender.z / hdist * 0.90)
+                        : besideHatch;
                 return new MountMotion(List.of(
                         new Contact(0.00, origin, MotionMode.SMOOTH),
                         new Contact(releaseFrac, origin, MotionMode.SMOOTH),
                         new Contact(0.28, rim, MotionMode.CLIMB_UP),
                         new Contact(0.38, besideHatch, MotionMode.WALK),
-                        new Contact(0.52, besideHatch, MotionMode.SMOOTH),     // facing hatch, hand closes lid!
-                        new Contact(0.67, sideFender, MotionMode.JUMP_DOWN),   // horizontal-first step off turret roof clear of cheek!
-                        new Contact(0.76, fenderOuter, MotionMode.WALK),       // step to outer fender lip
-                        new Contact(0.89, safeLanding, MotionMode.JUMP_DOWN),  // horizontal-first gravity drop clear of skirt!
+                        new Contact(0.50, besideHatch, MotionMode.SMOOTH),     // facing hatch, hand closes lid!
+                        new Contact(0.60, roofEdge, MotionMode.WALK),          // walk across flat turret roof to edge
+                        new Contact(0.71, sideFender, MotionMode.JUMP_DOWN),   // short horizontal-first drop onto fender!
+                        new Contact(0.79, fenderOuter, MotionMode.WALK),       // step to outer fender lip
+                        new Contact(0.90, safeLanding, MotionMode.JUMP_DOWN),  // horizontal-first gravity drop clear of skirt!
                         new Contact(1.00, safeLanding, MotionMode.SMOOTH)));   // crouch cushion & stand up
             }
             return new MountMotion(List.of(
@@ -789,13 +827,13 @@ final class MountMotion {
             Vec3 p = c.position;
             boolean nearGround = Math.abs(p.y - groundY) <= 0.16;
             if (nearGround) {
-                // Keep ground stand-off / landing spots strictly outside solid hull walls
+                // Keep ground stand-off / landing spots outside solid hull walls, capped to <= 0.45m so ZERO teleporting!
                 if (!enclosedDoor || (isDismount && i >= last - 1) || (!isDismount && i <= 1)) {
-                    Vec3 pushed = SurfaceClearance.pushClearOutward(allSolids, p, interiorRef, SurfaceClearance.BODY_RADIUS);
+                    Vec3 pushed = clampShift(p, SurfaceClearance.pushClearOutward(allSolids, p, interiorRef, SurfaceClearance.BODY_RADIUS), 0.45);
                     if (pushed != p) out.set(i, new Contact(c.time, pushed, c.mode));
                 }
             } else if (!enclosedDoor && c.mode != MotionMode.DROP_IN) {
-                double surfY = SurfaceClearance.supportTopY(allSolids, p.x, p.z, p.y, SurfaceClearance.FOOT_RADIUS, 0.42);
+                double surfY = SurfaceClearance.supportTopY(allSolids, p.x, p.z, p.y, SurfaceClearance.FOOT_RADIUS, 0.65);
                 if (surfY > p.y + 0.005) {
                     out.set(i, new Contact(c.time, new Vec3(p.x, surfY, p.z), c.mode));
                 }
@@ -863,13 +901,13 @@ final class MountMotion {
                 yield a.lerp(b, Mth.clamp(s, 0, 1));
             }
             case CLIMB_UP -> {
-                // Strictly vertical-first vault: boots rise 100% ABOVE the visual ledge (fender/wing/gunwale/turret)
-                // by u=0.48 with an 8cm step-over crest BEFORE horizontal inward movement (u=0.44..1.00) begins!
+                // Smooth vertical-first vault with zero abrupt launch velocity:
+                // S-curve vertical climb finishes 100% by u=0.62 (+6cm step-over crest) before horizontal
+                // step onto the ledge (u=0.54..1.00), avoiding both shin clipping and sudden rocket-pop jumps!
                 if (b.y > a.y + 0.22) {
-                    double tRise = Mth.clamp(u / 0.48, 0.0, 1.0);
-                    double uy = 1.0 - Math.pow(1.0 - tRise, 2.4);
-                    double crest = 0.08 * Math.sin(Math.PI * Mth.clamp((u - 0.36) / 0.64, 0.0, 1.0));
-                    double uxz = smooth(Math.max(0.0, (u - 0.44) / 0.56));
+                    double uy = smooth(Mth.clamp(u / 0.62, 0.0, 1.0));
+                    double crest = 0.06 * Math.sin(Math.PI * Mth.clamp((u - 0.44) / 0.56, 0.0, 1.0));
+                    double uxz = smooth(Math.max(0.0, (u - 0.54) / 0.46));
                     yield new Vec3(
                             Mth.lerp(uxz, a.x, b.x),
                             Mth.lerp(uy, a.y, b.y) + crest,
@@ -909,6 +947,13 @@ final class MountMotion {
     private static double smooth(double u) {
         double t = Mth.clamp(u, 0, 1);
         return t * t * (3.0 - 2.0 * t);
+    }
+
+    private static Vec3 clampShift(Vec3 origin, Vec3 target, double maxHorizDist) {
+        Vec3 delta = new Vec3(target.x - origin.x, 0, target.z - origin.z);
+        double len = delta.length();
+        if (len <= maxHorizDist || len < 1.0E-5) return target;
+        return new Vec3(origin.x + delta.x / len * maxHorizDist, target.y, origin.z + delta.z / len * maxHorizDist);
     }
 
     private static Vec3 sill(AABB hull, Vec3 from, Vec3 seat) {

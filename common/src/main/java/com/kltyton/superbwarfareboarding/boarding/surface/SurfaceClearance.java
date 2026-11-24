@@ -162,25 +162,23 @@ public final class SurfaceClearance {
      */
     public static Vec3 findTurretClimbBase(List<AABB> turretSolids, Vec3 onFender, Vec3 besideHatch) {
         if (turretSolids.isEmpty()) {
-            return new Vec3(onFender.x, onFender.y, onFender.z + (besideHatch.z - onFender.z) * 0.55);
+            return new Vec3(onFender.x, onFender.y, onFender.z + (besideHatch.z - onFender.z) * 0.45);
         }
+        double cheekClear = BODY_RADIUS + 0.10;
         Vec3 bestClear = onFender;
-        // March along the fender toward besideHatch's Z, staying on the fender's X line,
-        // and stop strictly BEFORE the player's full body radius touches any rotated turret cheek!
-        for (int i = 1; i <= 16; i++) {
-            double frac = i / 16.0;
+        for (int i = 1; i <= 20; i++) {
+            double frac = i / 20.0;
             Vec3 cand = new Vec3(
                     onFender.x,
                     onFender.y,
                     onFender.z + (besideHatch.z - onFender.z) * frac);
-            if (bodyHitsAny(turretSolids, cand, BODY_RADIUS)) {
+            if (bodyHitsAny(turretSolids, cand, cheekClear)) {
                 break;
             }
             bestClear = cand;
         }
-        // If even onFender itself was slightly grazed by a rotated turret cheek, push radially clear of turret!
-        if (bodyHitsAny(turretSolids, bestClear, BODY_RADIUS)) {
-            bestClear = pushClearOutward(turretSolids, bestClear, besideHatch, BODY_RADIUS);
+        if (bodyHitsAny(turretSolids, bestClear, cheekClear)) {
+            bestClear = pushClearOutward(turretSolids, bestClear, besideHatch, cheekClear);
         }
         return bestClear;
     }

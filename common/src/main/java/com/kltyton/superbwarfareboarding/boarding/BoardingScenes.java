@@ -141,8 +141,16 @@ public final class BoardingScenes {
                         BoardingSounds.play(marker.instruction(), rider, route);
                     }
                 });
-                scene = InteractiveScenes.play(subject, new SceneId(APPROACH_FILE, route.approachAnimation()),
-                        binding, options);
+                scene = playSafe(subject, new SceneId(APPROACH_FILE, route.approachAnimation()), binding, options);
+            }
+        }
+
+        private SceneHandle playSafe(SceneSubject subject, SceneId id, Bindings bindings, PlaybackOptions options) {
+            if (!vehicle.isAlive() || vehicle.isRemoved()) return null;
+            try {
+                return InteractiveScenes.play(subject, id, bindings, options);
+            } catch (IllegalArgumentException ignored) {
+                return null;
             }
         }
 
@@ -177,10 +185,11 @@ public final class BoardingScenes {
             });
             var door = route.door();
             if (door == null) {
-                scene = InteractiveScenes.play(subject, new SceneId(ANIMATION_FILE, route.profile().animation()), binding, options);
+                scene = playSafe(subject, new SceneId(ANIMATION_FILE, route.profile().animation()), binding, options);
             } else {
-                scene = InteractiveScenes.play(subject, new SceneId(DOOR_FILE, door.animation(vehicle)), binding, options);
+                scene = playSafe(subject, new SceneId(DOOR_FILE, door.animation(vehicle)), binding, options);
             }
+            if (!playing(scene)) mount();
         }
 
         boolean skip() {

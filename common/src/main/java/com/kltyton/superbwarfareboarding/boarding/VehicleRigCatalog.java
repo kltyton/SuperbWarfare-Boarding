@@ -137,28 +137,26 @@ final class VehicleRigCatalog {
                     new Vec3(0.0, 0.88, -2.30),
                     new Vec3(0.0, 1.35, -3.38));
             case "t_90a" -> {
-                // Seat 1 is right-side (-X) commander cupola (bone19); seats 0/2 use left-side (+X) gunner hatch (canggai).
-                // Both rim and besideHatch use turretPoint(...) so they always track turret yaw!
+                // T90aRenderer.renderScale() = 1.10f! Scaled hullMaxX=2.51, fender(+2.05,+2.70)_topY=1.86, turFrontZ=+2.30, roofY=2.87!
                 boolean commander = seat == 1;
                 Vec3 rim = commander
-                        ? turretPoint(vehicle, -0.71, 0.78, -0.29)
-                        : turretPoint(vehicle, 0.56, 0.72, -0.47);
+                        ? turretPoint(vehicle, -0.78, 1.08, -0.32)
+                        : turretPoint(vehicle, 0.62, 1.05, -0.52);
                 Vec3 besideHatch = commander
-                        ? turretPoint(vehicle, -1.36, 0.64, -0.44)
-                        : turretPoint(vehicle, 1.38, 0.60, -0.55);
+                        ? turretPoint(vehicle, -1.48, 1.06, -0.48)
+                        : turretPoint(vehicle, 1.48, 1.06, -0.58);
                 double side = rim.x >= 0 ? 1 : -1;
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 2.86, start.y, 2.25),
-                        new Vec3(side * 1.86, Math.max(start.y, 1.72), 2.25),
+                        new Vec3(side * 3.04, start.y, 2.75),
+                        new Vec3(side * 2.05, Math.max(start.y, 1.88), 2.75),
                         new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
-                        new Vec3(rim.x, 1.48, rim.z),
+                        new Vec3(rim.x, 1.56, rim.z),
                         rim);
             }
             case "prism_tank" -> new EntryPortal(
-                    // .geo.json raycast verified: outer fender max|X|=2.69, fender top Y=2.08 at Z=+3.06 -> stand clear at X=-3.16!
                     new Vec3(-0.594, 2.26, 3.062),
-                    new Vec3(-3.16, start.y, 3.062),
+                    new Vec3(-3.22, start.y, 3.062),
                     new Vec3(-2.14, Math.max(start.y, 2.10), 3.062),
                     new Vec3(-1.42, Math.max(start.y, 2.24), 3.062),
                     new Vec3(-0.594, 1.32, 3.062),
@@ -167,7 +165,7 @@ final class VehicleRigCatalog {
                 if (seat == 0) {
                     yield new EntryPortal(
                             new Vec3(1.00, 2.12, 2.68),
-                            new Vec3(2.76, start.y, 2.68),
+                            new Vec3(2.82, start.y, 2.68),
                             new Vec3(1.94, Math.max(start.y, 2.06), 2.68),
                             new Vec3(1.52, Math.max(start.y, 2.08), 2.68),
                             new Vec3(1.00, 1.24, 2.68),
@@ -180,22 +178,23 @@ final class VehicleRigCatalog {
                 double side = rim.x >= 0 ? 1 : -1;
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 2.76, start.y, 2.85),
+                        new Vec3(side * 2.82, start.y, 2.85),
                         new Vec3(side * 1.94, Math.max(start.y, 2.06), 2.85),
                         new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
                         seat == 1 ? new Vec3(rim.x, 2.25, rim.z) : null,
                         rim);
             }
             case "bmp_2" -> {
-                Vec3 rim = turretPoint(vehicle, 0.60, 0.96, -0.35);
-                Vec3 besideHatch = turretPoint(vehicle, 1.16, 0.72, -0.35);
+                // Bmp2Renderer.renderScale() = 0.90f! Scaled hullMaxX=2.12, fender(+1.65,+2.00)_topY=2.20, roofY=2.69!
+                Vec3 rim = turretPoint(vehicle, 0.54, 0.72, -0.32);
+                Vec3 besideHatch = turretPoint(vehicle, 1.06, 0.68, -0.32);
                 double side = rim.x >= 0 ? 1 : -1;
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 2.90, start.y, 2.15),
-                        new Vec3(side * 1.82, Math.max(start.y, 2.30), 2.15),
+                        new Vec3(side * 2.66, start.y, 2.05),
+                        new Vec3(side * 1.65, Math.max(start.y, 2.22), 2.05),
                         new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
-                        new Vec3(rim.x, 1.68, rim.z),
+                        new Vec3(rim.x, 1.56, rim.z),
                         rim);
             }
             case "lav_150" -> {
@@ -224,8 +223,8 @@ final class VehicleRigCatalog {
                 double side = rim.x >= 0 ? 1 : -1;
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 2.86, start.y, 2.65),
-                        new Vec3(side * 1.88, Math.max(start.y, 1.72), 2.65),
+                        new Vec3(side * 2.90, start.y, 2.95),
+                        new Vec3(side * 1.88, Math.max(start.y, 1.86), 2.95),
                         new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
                         new Vec3(rim.x, 1.60, rim.z),
                         rim);
@@ -240,28 +239,28 @@ final class VehicleRigCatalog {
                             null, null, seatPosition);
                 }
                 // Exact bone25 crew hatch center relative to TurretPos [0, 1.875, 0.25]:
-                // bone25 ent X=[-1.23,-0.46], Y=[2.97,3.14], Z=[-0.58,+0.15] -> turret (-0.84, +1.18, -0.46)!
-                Vec3 rim = turretPoint(vehicle, -0.84, 1.18, -0.46);
-                Vec3 besideHatch = turretPoint(vehicle, -1.46, 1.14, -0.46);
+                Vec3 rim = turretPoint(vehicle, -0.84, 1.34, -0.46);
+                Vec3 besideHatch = turretPoint(vehicle, -1.46, 1.34, -0.46);
                 double side = rim.x >= 0 ? 1 : -1;
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 2.84, start.y, 2.65),
-                        new Vec3(side * 1.86, Math.max(start.y, 1.84), 2.65),
+                        new Vec3(side * 2.86, start.y, 2.75),
+                        new Vec3(side * 1.86, Math.max(start.y, 2.05), 2.75),
                         new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
                         new Vec3(rim.x, 1.72, rim.z),
                         rim);
             }
             case "yx_100" -> {
-                Vec3 rim = turretPoint(vehicle, 0.85, 0.56, 0.24);
-                Vec3 besideHatch = turretPoint(vehicle, 1.48, 0.38, 0.45);
+                // Yx100Renderer.renderScale() = 1.25f! Scaled hullMaxX=3.12, fender(+2.50,+3.60)_topY=2.66, turFrontZ=+3.26, roofY=3.96!
+                Vec3 rim = turretPoint(vehicle, 1.06, 1.34, 0.30);
+                Vec3 besideHatch = turretPoint(vehicle, 1.70, 1.34, 0.45);
                 double side = rim.x >= 0 ? 1 : -1;
                 yield new EntryPortal(
                         rim,
-                        new Vec3(side * 3.04, start.y, 2.65),
-                        new Vec3(side * 2.02, Math.max(start.y, 2.16), 2.65),
+                        new Vec3(side * 3.68, start.y, 3.65),
+                        new Vec3(side * 2.50, Math.max(start.y, 2.66), 3.65),
                         new Vec3(besideHatch.x, Math.max(start.y, besideHatch.y), besideHatch.z),
-                        new Vec3(rim.x, 2.05, rim.z),
+                        new Vec3(rim.x, 2.50, rim.z),
                         rim);
             }
             default -> null;
@@ -377,10 +376,10 @@ final class VehicleRigCatalog {
         return switch (model) {
             case "speedboat" -> {
                 double side = start.x < 0 ? -1 : 1;
-                // Keep gunwale step-over inside the open side cutout behind the windshield frame pillar (Z <= -0.45)!
-                double z = Math.min(seatPosition.z, -0.52);
+                // Keep gunwale step-over inside the wide-open rear cockpit cutout completely behind the rear frame pillar (Z <= -1.15)!
+                double z = Math.min(seatPosition.z, -1.15);
                 yield new EntryPortal(
-                        new Vec3(side * 1.04, Math.max(start.y, 1.42), z),
+                        new Vec3(side * 1.04, Math.max(start.y, 1.44), z),
                         new Vec3(side * 1.84, start.y, z),
                         new Vec3(side * 1.48, Math.max(start.y, 0.92), z),
                         null, null, seatPosition);
