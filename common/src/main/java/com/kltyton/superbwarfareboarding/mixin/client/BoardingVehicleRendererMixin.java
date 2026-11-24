@@ -7,6 +7,7 @@ import com.github.mcmodderanchor.simplebedrockmodel.v2.common.model.runtime.Bone
 import com.kltyton.interactiveanimation.client.playback.ClientActor;
 import com.kltyton.interactiveanimation.client.render.LegacyActorRenderer;
 import com.kltyton.superbwarfareboarding.boarding.CabDoor;
+import com.kltyton.superbwarfareboarding.boarding.EntryPath;
 import com.kltyton.superbwarfareboarding.boarding.VehicleMotion;
 import com.kltyton.superbwarfareboarding.client.camera.BoardingView;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -93,14 +94,24 @@ abstract class BoardingVehicleRendererMixin {
                 var bone = superbwarfareBoarding$bone(model, VehicleMotion.loadBearingBone(vehicle), actor);
                 if (bone != null) superbwarfareBoarding$apply(bone, pose.position(), pose.rotation());
             } else if (channel.equals(VehicleMotion.ACCESS)) {
-                for (var joint : VehicleMotion.accessJoints(vehicle)) {
+                Vec3 riderLocal = superbwarfareBoarding$riderLocal(vehicle, partialTick);
+                for (var joint : VehicleMotion.accessJoints(vehicle, riderLocal)) {
                     var bone = superbwarfareBoarding$bone(model, joint.name(), actor);
                     if (bone == null) continue;
+                    superbwarfareBoarding$restoreBone(bone);
+                    Vec3 slide = joint.slidePerNinetyDeg();
+                    if (slide.lengthSqr() > 1.0E-6) {
+                        double fraction = pose.rotation().y / 90.0;
+                        bone.x += (float) (slide.x * fraction);
+                        bone.y += (float) (slide.y * fraction);
+                        bone.z += (float) (slide.z * fraction);
+                    }
                     Vec3 axis = joint.openingAxis();
                     double ratio = axis.length();
-                    superbwarfareBoarding$restoreBone(bone);
-                    bone.rotation.rotateAxis((float) Math.toRadians(pose.rotation().y * ratio),
-                            (float) (-axis.x / ratio), (float) (-axis.y / ratio), (float) (axis.z / ratio));
+                    if (ratio > 1.0E-6) {
+                        bone.rotation.rotateAxis((float) Math.toRadians(pose.rotation().y * ratio),
+                                (float) (-axis.x / ratio), (float) (-axis.y / ratio), (float) (axis.z / ratio));
+                    }
                 }
             } else {
                 var side = CabDoor.forTrack(channel);
@@ -111,6 +122,16 @@ abstract class BoardingVehicleRendererMixin {
                 if (bone != null) superbwarfareBoarding$apply(bone, Vec3.ZERO, pose.rotation());
             }
         }
+    }
+
+    @Unique
+    private static Vec3 superbwarfareBoarding$riderLocal(VehicleEntity vehicle, float partialTick) {
+        for (var player : vehicle.level().players()) {
+            if (BoardingView.ownsVehicleContact(vehicle, player)) {
+                return EntryPath.toLocal(vehicle, player.getPosition(partialTick));
+            }
+        }
+        return null;
     }
 
     @Unique

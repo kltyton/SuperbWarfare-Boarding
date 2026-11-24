@@ -141,10 +141,10 @@ final class MountMotion {
         // LAV-25 / LAV-AD side-hinged rear double doors (sill low#2/#9 Y=0.96, Z=-3.38)
         if (profile == BoardingProfile.RAMP && portal != null) {
             if (lipRise > 1.50 || start.y - opening.y > 0.55) return null;
-            Vec3 atDoor = new Vec3(opening.x, start.y, opening.z - 0.78);
+            Vec3 atDoor = new Vec3(opening.x, start.y, opening.z - 1.12);
             Vec3 stepBack = portal.exteriorStep() != null
                     ? new Vec3(portal.exteriorStep().x, start.y, portal.exteriorStep().z)
-                    : new Vec3(opening.x, start.y, opening.z - 1.26);
+                    : new Vec3(opening.x, start.y, opening.z - 1.40);
             Vec3 alignDoor = new Vec3(opening.x, start.y, opening.z - 0.46);
             Vec3 sillStep = new Vec3(opening.x, Math.max(start.y, opening.y), opening.z);
             Vec3 insideBay = portal.foothold() != null ? portal.foothold()
@@ -556,8 +556,8 @@ final class MountMotion {
             Vec3 sillPoint = new Vec3(opening.x, Math.max(landing.y, opening.y), opening.z);
             Vec3 doorClear = portal.exteriorStep() != null
                     ? new Vec3(portal.exteriorStep().x, landing.y, portal.exteriorStep().z)
-                    : new Vec3(opening.x, landing.y, opening.z - 1.26);
-            Vec3 pushClose = new Vec3(opening.x, landing.y, opening.z - 0.78);
+                    : new Vec3(opening.x, landing.y, opening.z - 1.40);
+            Vec3 pushClose = new Vec3(opening.x, landing.y, opening.z - 1.12);
             return new MountMotion(List.of(
                     new Contact(0.00, origin, MotionMode.SMOOTH),
                     new Contact(releaseFrac, origin, MotionMode.SMOOTH),
@@ -614,8 +614,8 @@ final class MountMotion {
                         : new Vec3(sSign * 1.50, landing.y, 0.74);
                 Vec3 doorEdge = portal.exteriorStep() != null
                         ? new Vec3(portal.exteriorStep().x, landing.y, portal.exteriorStep().z)
-                        : new Vec3(sSign * 2.12, landing.y, 0.90);
-                Vec3 doorClosed = new Vec3(sSign * 1.76, landing.y, 0.78);
+                        : new Vec3(sSign * 2.18, landing.y, 0.76);
+                Vec3 doorClosed = new Vec3(sSign * 1.82, landing.y, 0.68);
                 return new MountMotion(List.of(
                         new Contact(0.00, origin, MotionMode.SMOOTH),
                         new Contact(releaseFrac, origin, MotionMode.SMOOTH),

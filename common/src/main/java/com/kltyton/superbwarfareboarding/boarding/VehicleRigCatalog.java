@@ -85,9 +85,9 @@ final class VehicleRigCatalog {
                     // .geo.json verified: cab floor bottom#0 Y_top=0.59, door pivot=(+-1.13, 1.38, +1.82), length=1.41m.
                     // At 74 deg open, door tip is at (+-2.49, 1.35, +1.43); rear half of doorway Z=0.41..1.25 is wide open!
                     yield new EntryPortal(
-                            new Vec3(side * 1.06, 0.42, 0.72),
+                            new Vec3(side * 1.06, 0.58, 0.72),
                             new Vec3(side * 1.56, start.y, 0.76),
-                            new Vec3(side * 2.14, start.y, 0.90),
+                            new Vec3(side * 2.18, start.y, 0.76),
                             new Vec3(side * 1.50, start.y, 0.74),
                             null,
                             new Vec3(side * 1.18, 1.25, 0.92));
@@ -131,14 +131,15 @@ final class VehicleRigCatalog {
                 }
                 double side = seat == 4 ? -1 : 1;
                 // .geo.json verified: tizi/tizi2 exact 4 rungs at Z=4.13:
-                // #7 (2.35, 0.65), #5 (2.14, 0.98), #3 (1.94, 1.30), #0 (1.82, 1.63); front-hinged door at Z=5.16.
+                // #7 (2.35, 0.65), #5 (2.14, 0.98), #3 (1.94, 1.30), #0 (1.82, 1.63); front-hinged door at Z=5.16,
+                // doorway sill Y=41.9/16=2.62m (cut cleanly out of bone#99/#132).
                 yield new EntryPortal(
-                        new Vec3(side * 1.36, 2.30, 4.30),
+                        new Vec3(side * 1.36, 2.58, 4.30),
                         new Vec3(side * 2.62, start.y, 4.13),
                         new Vec3(side * 2.35, Math.max(start.y, 0.65), 4.13),
                         new Vec3(side * 1.82, Math.max(start.y, 1.63), 4.13),
                         null,
-                        new Vec3(side * 1.50, 2.85, 4.35));
+                        new Vec3(side * 1.50, 2.95, 4.35));
             }
             case "wheel_chair" -> new EntryPortal(
                     new Vec3(0.0, 0.35, 0.45),
@@ -166,13 +167,13 @@ final class VehicleRigCatalog {
             case "lav_25", "lav_ad" -> new EntryPortal(
                     // .geo.json verified: double rear doors hinged at X=+-0.86, Z=-3.34, rear bumper/sill low#2/#9 Y_top=0.96!
                     new Vec3(0.0, 0.96, -3.38),
-                    new Vec3(0.0, start.y, -4.16),
-                    new Vec3(0.0, start.y, -4.64),
+                    new Vec3(0.0, start.y, -4.46),
+                    new Vec3(0.0, start.y, -4.78),
                     new Vec3(0.0, 0.94, -2.92),
                     new Vec3(0.0, 0.88, -2.30),
                     new Vec3(0.0, 1.35, -3.38));
             case "t_90a" -> {
-                Vec3 rim = turretPoint(vehicle, 0.73, 0.98, -0.55);
+                Vec3 rim = turretPoint(vehicle, 0.72, 0.94, -0.49);
                 double side = rim.x >= 0 ? 1 : -1;
                 // .geo.json verified: outer ERA skirt bone4 |X|=2.28, fender sideL#46 |X|=1.32..2.03 Y_top=1.65, turret Y=2.40
                 yield new EntryPortal(
@@ -322,19 +323,25 @@ final class VehicleRigCatalog {
                         modelPoint(vehicle, 0.0, 1.88, seatPosition.z));
             }
             case "mi_28" -> {
-                double z = seat == 0 ? 1.72 : 2.86;
-                double sillY = seat == 0 ? 1.48 : 1.36;
-                double interiorY = seat == 0 ? 1.36 : 1.24;
-                // .geo.json verified: main wheel gear2#4 X=[-1.04,-0.89] Y_top=0.54 Z=1.32;
-                // lower fuselage sponson step bone2#66/#126 X=[-1.05,-0.73] Y_top=1.02 Z=1.34;
-                // cockpit sill bone2#93 X=-0.74 Y=1.48! Boots step squarely onto wheel -> sponson -> cab!
+                // Authentic Mi-28 asymmetric doors:
+                // - seat 0 (rear pilot): starboard/right (-X) door; wheel gear2#4 Y=0.54 -> sponson Y=1.06 -> over "24" armor sill Y=1.88!
+                // - seat 1 (front gunner): port/left (+X) door; wheel gear Y=0.54 -> left sponson Y=1.06 -> over left sill Y=1.74!
+                if (seat == 1) {
+                    yield new EntryPortal(
+                            new Vec3(0.68, 1.74, 2.86),
+                            new Vec3(1.58, start.y, 1.65),
+                            new Vec3(0.98, Math.max(start.y, 0.54), 1.32),
+                            new Vec3(0.92, Math.max(start.y, 1.06), 2.18),
+                            new Vec3(0.0, 1.18, 2.86),
+                            new Vec3(0.0, 1.92, 2.86));
+                }
                 yield new EntryPortal(
-                        new Vec3(-0.74, sillY, z),
-                        new Vec3(-1.60, start.y, 1.48),
+                        new Vec3(-0.76, 1.88, 1.72),
+                        new Vec3(-1.62, start.y, 1.48),
                         new Vec3(-0.98, Math.max(start.y, 0.54), 1.32),
-                        new Vec3(-0.94, Math.max(start.y, 1.02), 1.34),
-                        new Vec3(0.0, interiorY, z),
-                        new Vec3(0.0, sillY + 0.25, z));
+                        new Vec3(-0.96, Math.max(start.y, 1.06), 1.48),
+                        new Vec3(0.0, 1.50, 1.72),
+                        new Vec3(0.0, 2.05, 1.72));
             }
             case "ah_6" -> {
                 double side = seat == 0 || seat == 3 ? 1 : -1;

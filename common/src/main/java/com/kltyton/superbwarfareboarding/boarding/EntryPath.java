@@ -288,7 +288,7 @@ public final class EntryPath {
         return true;
     }
 
-    static Vec3 toLocal(VehicleEntity vehicle, Vec3 world) {
+    public static Vec3 toLocal(VehicleEntity vehicle, Vec3 world) {
         return world.subtract(vehicle.position()).yRot(vehicle.getYRot() * ((float) Math.PI / 180));
     }
 
