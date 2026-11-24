@@ -1,0 +1,114 @@
+repositories {
+    maven { url = uri('https://api.modrinth.com/maven') }
+    maven {
+        url = uri('https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/')
+        content { includeGroup('software.bernie.geckolib') }
+    }
+    mavenCentral()
+}
+
+def forgeTarget = loader == 'forge'
+def compileMods = forgeTarget ? 'modCompileOnly' : 'compileOnly'
+def runtimeMods = forgeTarget ? 'modRuntimeOnly' : 'runtimeOnly'
+def ownRoot = rootDir.parentFile.parentFile
+def animCue = providers.gradleProperty('interactiveAnimationJar').orElse(
+        new File(ownRoot.parentFile, "../26.2/互动动画/targets/${loader}-${minecraft_version}/build/libs/interactive_animation-${loader}-${minecraft_version}-0.1.0.jar").canonicalPath)
+def superb = providers.gradleProperty('superbWarfareJar')
+def superbRelease = forgeTarget ? '81Iyv9ao' : 'izD7dnxq'
+def kotlinRelease = forgeTarget ? 'Zsh14XeQ' : '9ZlVvei8'
+def localMod = { location ->
+    if (!forgeTarget) return files(location)
+
+    // LegacyForge remaps module dependencies and forwards their attributes to the base configuration.
+    def jarFile = file(location.get())
+    def artifactName = jarFile.name.replaceFirst(/\.jar$/, '')
+    def localGroup = "${mod_group_id}.local"
+    repositories {
+        exclusiveContent {
+            forRepository {
+                ivy {
+                    url = uri(jarFile.parentFile)
+                    patternLayout { artifact '[artifact].[ext]' }
+                    metadataSources { artifact() }
+                }
+            }
+            filter { includeModule(localGroup, artifactName) }
+        }
+    }
+    [group: localGroup, name: artifactName, version: 'local']
+}
+def animCueDependency = localMod(animCue)
+def superbDependency = superb.isPresent() ? localMod(superb) : null
+def superbArchive = configurations.create('superbArchive') {
+    canBeConsumed = false
+    transitive = false
+}
+def modelApiDir = layout.buildDirectory.dir('compile-dependencies/superbwarfare')
+def simpleBedrockArchive = providers.provider {
+    zipTree(superbArchive.singleFile).matching { include 'META-INF/jarjar/simplebedrockmodel-*.jar' }.singleFile
+}
+def extractSuperbModelApi = tasks.register('extractSuperbModelApi', Sync) {
+    from(simpleBedrockArchive) { into 'META-INF/jarjar' }
+    from({ zipTree(simpleBedrockArchive.get()).matching { include 'META-INF/jarjar/mae-*.jar' } })
+    into modelApiDir
+}
+def superbModelApi = files(modelApiDir.map { it.asFileTree.matching { include 'META-INF/jarjar/*.jar' } })
+        .builtBy(extractSuperbModelApi)
+dependencies {
+    add(compileMods, animCueDependency)
+    add(runtimeMods, animCueDependency)
+    if (superbDependency != null) {
+        add(compileMods, superbDependency)
+        add(runtimeMods, superbDependency)
+    } else {
+        add(compileMods, "maven.modrinth:superb-warfare:${superbRelease}") { transitive = false }
+        add(runtimeMods, "maven.modrinth:superb-warfare:${superbRelease}") { transitive = false }
+    }
+    // Compile against the renderer API shipped inside the chosen distribution, without redistributing it.
+    add('superbArchive', superb.isPresent() ? files(superb) : "maven.modrinth:superb-warfare:${superbRelease}")
+    compileOnly superbModelApi
+    add(runtimeMods, "maven.modrinth:kotlin-for-forge:${kotlinRelease}") { transitive = false }
+    add(runtimeMods, "software.bernie.geckolib:geckolib-${loader}-${minecraft_version}:${geckolib_version}")
+    compileOnly 'io.github.llamalad7:mixinextras-common:0.5.5'
+    if (forgeTarget) {
+        def localMoreRotation = new File(ownRoot.parentFile,
+                '../26.1/PlayerAnimationLibraryMoreRotation/versions/1.20.1/forge/build/libs/playeranimationlibrarymorerotation-forge-1.20.1-1.2.1.jar')
+        def moreRotation = providers.gradleProperty('palMoreJar').orElse(localMoreRotation.canonicalPath)
+        compileOnly files(moreRotation)
+        compileOnly 'net.fabricmc:sponge-mixin:0.17.5+mixin.0.8.7'
+        annotationProcessor 'net.fabricmc:sponge-mixin:0.17.5+mixin.0.8.7'
+    }
+}
+
+if (forgeTarget) {
+    repositories { maven { url = uri('https://maven.fabricmc.net/') } }
+    mixin {
+        add(sourceSets.main, "${mod_id}.refmap.json")
+        config("${mod_id}.mixins.json")
+        config("${mod_id}.forge.mixins.json")
+    }
+    tasks.named('jar', Jar) {
+        manifest.attributes('MixinConfigs': "${mod_id}.mixins.json,${mod_id}.forge.mixins.json")
+        finalizedBy 'reobfJar'
+    }
+    tasks.named('processResources') {
+        filesMatching(['superbwarfare_boarding.mixins.json', 'superbwarfare_boarding.forge.mixins.json']) {
+            filter { line -> line == '{' ? line + "\n  \"refmap\": \"superbwarfare_boarding.refmap.json\"," : line }
+        }
+    }
+    def common = project(':common')
+    gradle.projectsEvaluated {
+        def targetOptions = tasks.named('compileJava', JavaCompile).get().options
+        def providers = new ArrayList(targetOptions.compilerArgumentProviders)
+        def arguments = new ArrayList(targetOptions.compilerArgs)
+        targetOptions.compilerArgumentProviders.removeAll(providers)
+        common.tasks.named('compileJava', JavaCompile) {
+            options.annotationProcessorPath = common.configurations.annotationProcessor + configurations.annotationProcessor
+            options.compilerArgumentProviders.addAll(providers)
+            def refmap = new File(destinationDirectory.get().asFile, "${mod_id}.refmap.json")
+            options.compilerArgs.addAll(arguments.collect { argument ->
+                argument.startsWith('-AoutRefMapFile=') ? "-AoutRefMapFile=${refmap.absolutePath}" : argument
+            })
+        }
+    }
+}

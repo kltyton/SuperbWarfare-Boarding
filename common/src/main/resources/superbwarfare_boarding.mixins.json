@@ -1,0 +1,20 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.superbwarfareboarding.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "boarding.VehicleBoardingMixin",
+    "boarding.VehicleDismountLocationMixin",
+    "boarding.VehicleExitPacketMixin",
+    "boarding.VehicleSceneContactMixin",
+    "boarding.WheelchairTouchMixin"
+  ],
+  "client": [
+    "client.BoardingCameraMixin",
+    "client.BoardingGameRendererMixin",
+    "client.BoardingVehicleBakeMixin",
+    "client.BoardingVehicleRendererMixin"
+  ],
+  "injectors": {"defaultRequire": 1}
+}
