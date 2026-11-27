@@ -27,7 +27,7 @@
 - **贴合实车结构的登乘与梯攀**：根据每款载具的真实车门、金属脚踏板、斜钢梯、垂直攀爬梯、起落架轮胎、装甲后门、炮塔舱盖、车体舱盖、机翼边条与座舱盖设计专属路径与联动部件动画，并支持大型空艇与高车体载具的逐级攀爬。
 - **载具专属屈膝驾驶与乘坐姿态**：告别僵硬的原版伸腿坐姿，为方向盘驾驶、战斗机/直升机操纵杆、坦克/炮塔乘员、舰艇与露天座位、固定武器与轮椅分别定制自然屈膝与握持姿态。
 - **下车物理关门与关盖**：载具停稳下车时，角色踩踏台阶/门槛稳步落地后转身面对敞开的车门、后舱门或舱盖，伸手将其物理推合再恢复操控；行驶中、空中弹射或无安全落脚点时保持原生即时离座。
-- **长按跳过动画 + 实时 HUD 提示**：播片期间快捷栏上方自动显示本地化按键提示与实时进度条；**长按交互键（默认右键）或下车键（默认左 Alt / Shift）约 0.5 秒**即可随时跳过演出直接落座或落地，同时屏蔽误触单击。
+- **长按跳过动画 + 右下角环形 HUD**：播片期间屏幕右下角自动显示紧凑的 3A 风格环形长按跳过提示；**长按交互键（默认右键）或下车键（默认左 Alt / Shift）约 0.5 秒**即可顺时针填满圆环随时跳过并直接落座或落地，同时屏蔽误触单击。
 - **丝滑跟拍镜头与双面渲染**：第一人称自动平滑拉出至载具外侧跟拍，结束后无跳变归位；动画及镜头过渡期间自动关闭载具背面剔除，开门与座舱内部视角清晰通透。
 - **关键帧音效同步**：根据脚下方块材质自动播放脚步声，并在服务端按关键帧同步触发开关门、舱盖启闭、金属踏步与落座音效。
 
@@ -58,9 +58,9 @@
 | ![ZTZ-99A 车长舱盖](docs/publishing/gifs/ztz99a-turret-hatch.gif) | ![PLZ-05 车体舱盖](docs/publishing/gifs/plz05-hull-hatch.gif) |
 
 <p align="center">
-  <img src="docs/publishing/screenshots/hud-skip-holding.png" width="76%" alt="长按跳过动画 HUD 实时提示与进度条" />
+  <img src="docs/publishing/screenshots/hud-skip-holding.png" width="76%" alt="右下角环形长按跳过动画 HUD" />
   <br />
-  <sub>播片期间快捷栏上方自动显示动态按键提示与长按跳过进度条</sub>
+  <sub>播片期间屏幕右下角显示紧凑的 3A 风格环形长按跳过提示与顺时针填充动效</sub>
 </p>
 
 ---
@@ -79,8 +79,8 @@
 
 | 平台 | Minecraft | 加载器 | 必需前置 | 可选肢体/躯干弯曲增强 |
 | --- | --- | --- | --- | --- |
-| **NeoForge** | `1.21.1` | NeoForge `21.1.248+` | [合拍 AnimCue](https://github.com/kltyton/AnimCue)（`interactive_animation >= 0.1.0`）、Superb Warfare（`>= 0.8.9.2`）、GeckoLib、Kotlin for Forge | Player Animation Library（PAL）+ PAL More Rotation |
-| **Forge** | `1.20.1` | Forge `47.4.22+` | [合拍 AnimCue](https://github.com/kltyton/AnimCue)（`interactive_animation >= 0.1.0`）、Superb Warfare（`>= 0.8.9.2`）、GeckoLib、Kotlin for Forge、MixinExtras（`>= 0.3.6`，随 Superb Warfare 提供） | playerAnimator + bendy-lib + PAL More Rotation（Forge 版） |
+| **NeoForge** | `1.21.1` | NeoForge `21.1.248+` | [合拍 AnimCue](https://github.com/kltyton/AnimCue)（`interactive_animation >= 0.1.1`）、Superb Warfare（`>= 0.8.9.2`）、GeckoLib、Kotlin for Forge | Player Animation Library（PAL）+ PAL More Rotation |
+| **Forge** | `1.20.1` | Forge `47.4.22+` | [合拍 AnimCue](https://github.com/kltyton/AnimCue)（`interactive_animation >= 0.1.1`）、Superb Warfare（`>= 0.8.9.2`）、GeckoLib、Kotlin for Forge、MixinExtras（`>= 0.3.6`，随 Superb Warfare 提供） | playerAnimator + bendy-lib + PAL More Rotation（Forge 版） |
 
 所有前置均并排安装，模组本体不内嵌第三方依赖包。
 

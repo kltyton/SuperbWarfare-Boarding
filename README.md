@@ -27,7 +27,7 @@ Right-click any rideable Superb Warfare vehicle as usual:
 - **Model-Anchored Climbs, Doors & Hatches**: Every vehicle class follows trajectories aligned to its stock model parts—swinging cab doors, 4-rung steel ladders, tall vertical airship ladders, landing-gear tires, armored rear doors, hull & turret hatches, fighter LERX wing roots, and sliding/hinged canopies.
 - **Custom Seated Riding Poses**: Replaces the stiff vanilla straight-legged sitting posture with tailored bent-knee poses for steering wheels, fighter/helicopter flight sticks, tank/turret crews, open seats, emplacements, and wheelchairs.
 - **Physical Door & Hatch Closing on Dismount**: On stationary dismount, players step cleanly down onto safe ground, turn to face open cab/rear doors or hatches, and physically push them shut before regaining normal control. Moving, airborne, and ejection dismounts remain instant.
-- **Hold-to-Skip with Live HUD Prompt**: Displays a localized keybind hint and real-time fill bar above the hotbar during playback. **Hold Interact (right-click) or Dismount (~0.5 s)** to skip directly into or out of the seat at any time, while filtering accidental single clicks.
+- **Hold-to-Skip with Compact Circular HUD**: Displays a compact AAA-style circular hold-to-skip ring and localized keybind hint in the bottom-right corner during playback. **Hold Interact (right-click) or Dismount (~0.5 s)** to skip directly into or out of the seat at any time with a live clockwise radial sweep, while filtering accidental single clicks.
 - **Smooth Cinematic Camera & Double-Sided Rendering**: First-person views orbit smoothly outside the vehicle during animations and return seamlessly without snapping; vehicle backface culling is temporarily disabled during playback so open doors and interiors render cleanly from every angle.
 - **Synchronized Audio**: Keyframe-aligned door/hatch open & close sounds, hull climb steps, seat settling, and block-material-aware footsteps.
 
@@ -58,9 +58,9 @@ Superb Warfare's native locking, menus, vehicle tools, multi-seat controls, movi
 | ![ZTZ-99A Commander Hatch](docs/publishing/gifs/ztz99a-turret-hatch.gif) | ![PLZ-05 Hull Hatch](docs/publishing/gifs/plz05-hull-hatch.gif) |
 
 <p align="center">
-  <img src="docs/publishing/screenshots/hud-skip-holding.png" width="76%" alt="Hold-to-Skip Live HUD Prompt and Progress Bar" />
+  <img src="docs/publishing/screenshots/hud-skip-holding.png" width="76%" alt="Compact Bottom-Right Circular Hold-to-Skip HUD" />
   <br />
-  <sub>Localized hold-to-skip HUD prompt and live progress bar displayed above the hotbar during playback</sub>
+  <sub>Compact AAA-style bottom-right circular hold-to-skip ring and clockwise fill prompt displayed during playback</sub>
 </p>
 
 ---
@@ -79,8 +79,8 @@ Superb Warfare's native locking, menus, vehicle tools, multi-seat controls, movi
 
 | Platform | Minecraft | Loader | Required Dependencies | Optional Limb/Torso Bending |
 | --- | --- | --- | --- | --- |
-| **NeoForge** | `1.21.1` | NeoForge `21.1.248+` | [AnimCue](https://github.com/kltyton/AnimCue) (`interactive_animation >= 0.1.0`), Superb Warfare (`>= 0.8.9.2`), GeckoLib, Kotlin for Forge | Player Animation Library (PAL) + PAL More Rotation |
-| **Forge** | `1.20.1` | Forge `47.4.22+` | [AnimCue](https://github.com/kltyton/AnimCue) (`interactive_animation >= 0.1.0`), Superb Warfare (`>= 0.8.9.2`), GeckoLib, Kotlin for Forge, MixinExtras (`>= 0.3.6`, provided by Superb Warfare) | playerAnimator + bendy-lib + PAL More Rotation (Forge) |
+| **NeoForge** | `1.21.1` | NeoForge `21.1.248+` | [AnimCue](https://github.com/kltyton/AnimCue) (`interactive_animation >= 0.1.1`), Superb Warfare (`>= 0.8.9.2`), GeckoLib, Kotlin for Forge | Player Animation Library (PAL) + PAL More Rotation |
+| **Forge** | `1.20.1` | Forge `47.4.22+` | [AnimCue](https://github.com/kltyton/AnimCue) (`interactive_animation >= 0.1.1`), Superb Warfare (`>= 0.8.9.2`), GeckoLib, Kotlin for Forge, MixinExtras (`>= 0.3.6`, provided by Superb Warfare) | playerAnimator + bendy-lib + PAL More Rotation (Forge) |
 
 All dependencies are installed side-by-side (no Jar-in-Jar bundling).
 

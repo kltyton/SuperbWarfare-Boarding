@@ -24,7 +24,7 @@
 - **Model-Anchored Doors, Ladders, Canopies & Hatches**: Every vehicle class interacts with its real stock model parts—swinging cab doors, 4-rung steel ladders, tall vertical airship ladders, helicopter landing-gear tires, armored rear doors, tank turret & hull hatches, fighter LERX wing roots, and hinged/sliding canopies.
 - **Custom Seated Driving & Crew Poses**: Replaces the rigid vanilla straight-legged sitting posture with vehicle-appropriate bent-knee poses for steering wheels, aircraft flight sticks, tank/turret crews, open seats, fixed emplacements, and wheelchairs.
 - **Physical Door & Hatch Closing**: On stationary dismount, players step down cleanly onto safe ground, turn toward open doors or hatches, and push them shut before regaining normal control. Moving, airborne, and ejection exits stay instant.
-- **Hold-to-Skip + Live HUD Hint**: A localized keybind hint and live fill bar appear above the hotbar during playback. Hold **Interact (right-click)** or **Dismount** (~0.5 s) anytime to skip straight into or out of the seat, while accidental single clicks are ignored.
+- **Hold-to-Skip + Compact Circular HUD**: A compact AAA-style circular skip prompt and localized keybind hint appear cleanly in the bottom-right corner during playback. Hold **Interact (right-click)** or **Dismount** (~0.5 s) to fill the radial ring clockwise and skip straight into or out of the seat, while accidental single clicks are ignored.
 - **Smooth Camera & Double-Sided Vehicle Rendering**: First-person views glide smoothly outside the vehicle during animations and return seamlessly afterward. Vehicle backface culling is temporarily disabled during playback so open doors and cabins render cleanly from all angles.
 - **Synchronized Audio**: Keyframe-aligned door/hatch sounds, hull climbing steps, seat settling, and surface-aware footsteps.
 
@@ -58,8 +58,8 @@
 
 ### Requirements
 
-- **NeoForge 1.21.1** (`21.1.248+`): **AnimCue** (`interactive_animation >= 0.1.0`), **Superb Warfare** (`>= 0.8.9.2`), **GeckoLib**, **Kotlin for Forge** *(Optional: Player Animation Library + PAL More Rotation for smooth limb/torso bending)*
-- **Forge 1.20.1** (`47.4.22+`): **AnimCue** (`interactive_animation >= 0.1.0`), **Superb Warfare** (`>= 0.8.9.2`), **GeckoLib**, **Kotlin for Forge**, **MixinExtras** (`>= 0.3.6`, bundled with Superb Warfare) *(Optional: playerAnimator + bendy-lib + PAL More Rotation Forge)*
+- **NeoForge 1.21.1** (`21.1.248+`): **AnimCue** (`interactive_animation >= 0.1.1`), **Superb Warfare** (`>= 0.8.9.2`), **GeckoLib**, **Kotlin for Forge** *(Optional: Player Animation Library + PAL More Rotation for smooth limb/torso bending)*
+- **Forge 1.20.1** (`47.4.22+`): **AnimCue** (`interactive_animation >= 0.1.1`), **Superb Warfare** (`>= 0.8.9.2`), **GeckoLib**, **Kotlin for Forge**, **MixinExtras** (`>= 0.3.6`, bundled with Superb Warfare) *(Optional: playerAnimator + bendy-lib + PAL More Rotation Forge)*
 ```
 
 ---
@@ -92,9 +92,9 @@
    - 替换原版僵硬的伸直双腿坐姿，根据载具类型自动匹配方向盘驾驶、战机/直升机操纵杆、坦克/炮塔乘员、露天/舰艇乘员、固定炮台与轮椅等自然屈膝与握持姿态。
 5. **下车物理关门与关盖**
    - 载具停稳后下车时，角色踩踏门槛或台阶稳步落地，随后转身面向敞开的车门、后舱门或舱盖，伸手将其物理推合后恢复自由操控；高速行驶、空中弹射或无安全落脚点时仍保持原生即时离座。
-6. **长按跳过动画 + 实时 HUD 提示条**
-   - 播放上下车演出期间，快捷栏上方自动显示本地化按键提示与实时填充进度条。
-   - **长按交互键（默认鼠标右键）或下车键（默认左 Alt / Shift）约 0.5 秒**即可随时跳过演出直接落座或落地，同时自动过滤单次误触。
+6. **长按跳过动画 + 右下角环形 HUD**
+   - 播放上下车演出期间，屏幕右下角自动显示紧凑的 3A 风格环形长按跳过提示，不遮挡视野或快捷栏。
+   - **长按交互键（默认鼠标右键）或下车键（默认左 Alt / Shift）约 0.5 秒**即可顺时针填满进度环并随时跳过演出直接落座或落地，同时自动过滤单次误触。
 7. **丝滑跟拍镜头、双面渲染与关键帧音效**
    - 第一人称登乘时镜头平滑拉出至载具外侧跟拍，结束后无跳变归位；动画期间自动关闭载具背面剔除，开门与座舱内景清晰无穿帮。
    - 依据脚下方块材质播放真实脚步声，并在服务端按关键帧同步触发开关门、舱盖启闭、金属踏步与落座音效。
@@ -102,17 +102,33 @@
 #### 前置依赖
 
 - **NeoForge 1.21.1**（`21.1.248+`）：
-  - 必需：**合拍 AnimCue**（`interactive_animation >= 0.1.0`）、**卓越前线 Superb Warfare**（`>= 0.8.9.2`）、**GeckoLib**、**Kotlin for Forge**
+  - 必需：**合拍 AnimCue**（`interactive_animation >= 0.1.1`）、**卓越前线 Superb Warfare**（`>= 0.8.9.2`）、**GeckoLib**、**Kotlin for Forge**
   - 可选增强：**Player Animation Library（PAL）** + **PAL More Rotation**（开启流畅的关节弯曲与肢体动作）
 - **Forge 1.20.1**（`47.4.22+`）：
-  - 必需：**合拍 AnimCue**（`interactive_animation >= 0.1.0`）、**卓越前线 Superb Warfare**（`>= 0.8.9.2`）、**GeckoLib**、**Kotlin for Forge**、**MixinExtras**（`>= 0.3.6`，卓越前线已自带）
+  - 必需：**合拍 AnimCue**（`interactive_animation >= 0.1.1`）、**卓越前线 Superb Warfare**（`>= 0.8.9.2`）、**GeckoLib**、**Kotlin for Forge**、**MixinExtras**（`>= 0.3.6`，卓越前线已自带）
   - 可选增强：**playerAnimator** + **bendy-lib** + **PAL More Rotation（Forge 版）**
 
 ---
 
-## 3. 版本发布日志 · Release Notes (`v0.1.0`)
+## 3. 版本发布日志 · Release Notes (`v0.1.1` & `v0.1.0`)
 
-### 中文更新日志
+### v0.1.1 中文更新日志
+
+**卓越前线：登乘演出 v0.1.1（适配 AnimCue 0.1.1 & 3A 右下角环形跳过 HUD）**
+
+- **合拍 AnimCue 0.1.1 兼容性修复**：更新编译与运行依赖至 AnimCue `0.1.1`（Sighs Maven `com.kltyton:interactive_animation-*`），并将模组前置声明范围更新为 `interactive_animation >= 0.1.1`，完整适配统一后的 `interactive_animation:*` 场景命名空间。
+- **右下角 3A 风格环形长按跳过 HUD**：移除原快捷栏上方占用视野的矩形横条，改为屏幕右下角紧凑抗锯齿圆形进度环与双箭头标识，搭配精简带阴影按键文字，长按时顺时针平滑填充进度环。
+
+### v0.1.1 English Release Notes
+
+**Superb Warfare: Boarding v0.1.1 (AnimCue 0.1.1 Compatibility & AAA Bottom-Right Circular Skip HUD)**
+
+- **AnimCue 0.1.1 Compatibility**: Updated build and runtime dependency resolution to AnimCue `0.1.1` (`com.kltyton:interactive_animation-*` on Sighs Maven) and bumped mod metadata dependency requirement to `interactive_animation >= 0.1.1` matching the unified `interactive_animation:*` namespace.
+- **Compact Bottom-Right Circular Skip HUD**: Replaced the bulky above-hotbar rectangle with a sleek, anti-aliased AAA-style circular hold-to-skip ring and double-chevron icon in the bottom-right corner, featuring smooth clockwise radial progress and concise keybind text.
+
+---
+
+### v0.1.0 中文更新日志
 
 **卓越前线：登乘演出 v0.1.0 首发版本（支持 NeoForge 1.21.1 & Forge 1.20.1）**
 

@@ -92,6 +92,20 @@ public final class BoardingView {
         return Mth.clamp(lerped / HOLD_SKIP_TICKS, 0.0f, 1.0f);
     }
 
+    /** Returns smooth elapsed ticks while the active boarding/dismounting prompt is visible. */
+    public static float playingTicks(float partialTick) {
+        if (!isPlaying() || session.player.level() == null) return 0.0f;
+        long now = session.player.level().getGameTime();
+        return Math.max(0.0f, (now - session.start) + Mth.clamp(partialTick, 0.0f, 1.0f));
+    }
+
+    /** True when the player is holding a dismount key rather than the interact key during skip-hold. */
+    public static boolean isHoldingDismount() {
+        return isPlaying() && session.holdTicks > 0
+                && !Minecraft.getInstance().options.keyUse.isDown()
+                && (ModKeyMappings.DISMOUNT.isDown() || Minecraft.getInstance().options.keyShift.isDown());
+    }
+
     public static void tick(Minecraft game) {
         var player = game.player;
         if (player == null || game.level == null || game.getCameraEntity() != player || !player.isAlive()) {

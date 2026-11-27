@@ -1,4 +1,8 @@
 repositories {
+    maven {
+        url = uri('https://maven.sighs.top/releases')
+        content { includeGroup('com.kltyton') }
+    }
     maven { url = uri('https://api.modrinth.com/maven') }
     maven { url = uri('https://repo.redlance.org/public') }
     maven {
@@ -12,8 +16,7 @@ def forgeTarget = loader == 'forge'
 def compileMods = forgeTarget ? 'modCompileOnly' : 'compileOnly'
 def runtimeMods = forgeTarget ? 'modRuntimeOnly' : 'runtimeOnly'
 def ownRoot = rootDir.parentFile.parentFile
-def animCue = providers.gradleProperty('interactiveAnimationJar').orElse(
-        new File(ownRoot.parentFile, "../26.2/互动动画/targets/${loader}-${minecraft_version}/build/libs/interactive_animation-${loader}-${minecraft_version}-0.1.0.jar").canonicalPath)
+def animCueOverride = providers.gradleProperty('interactiveAnimationJar')
 def superb = providers.gradleProperty('superbWarfareJar')
 def superbRelease = forgeTarget ? '81Iyv9ao' : 'izD7dnxq'
 def kotlinRelease = forgeTarget ? 'Zsh14XeQ' : '9ZlVvei8'
@@ -38,7 +41,11 @@ def localMod = { location ->
     }
     [group: localGroup, name: artifactName, version: 'local']
 }
-def animCueDependency = localMod(animCue)
+def localAnimCueFile = new File(ownRoot.parentFile,
+        "../26.2/互动动画/targets/${loader}-${minecraft_version}/build/libs/interactive_animation-${loader}-${minecraft_version}-${animcue_version}.jar")
+def localCue = animCueOverride.isPresent() || localAnimCueFile.isFile()
+def animCueCoordinate = "com.kltyton:interactive_animation-${loader}-${minecraft_version}:${animcue_version}"
+def animCueDependency = localCue ? localMod(animCueOverride.orElse(localAnimCueFile.canonicalPath)) : animCueCoordinate
 def superbDependency = superb.isPresent() ? localMod(superb) : null
 def superbArchive = configurations.create('superbArchive') {
     canBeConsumed = false
@@ -56,8 +63,13 @@ def extractSuperbModelApi = tasks.register('extractSuperbModelApi', Sync) {
 def superbModelApi = files(modelApiDir.map { it.asFileTree.matching { include 'META-INF/jarjar/*.jar' } })
         .builtBy(extractSuperbModelApi)
 dependencies {
-    add(compileMods, animCueDependency)
-    add(runtimeMods, animCueDependency)
+    if (localCue) {
+        add(compileMods, animCueDependency)
+        add(runtimeMods, animCueDependency)
+    } else {
+        add(compileMods, animCueDependency) { transitive = false }
+        add(runtimeMods, animCueDependency) { transitive = false }
+    }
     if (superbDependency != null) {
         add(compileMods, superbDependency)
         add(runtimeMods, superbDependency)
